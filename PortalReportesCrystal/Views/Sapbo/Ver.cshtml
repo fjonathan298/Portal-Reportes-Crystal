@@ -1,0 +1,135 @@
+﻿@{
+    ViewBag.Title = (string)ViewBag.Nombre ?? "Reporte SAP BO";
+    string nombre = (string)ViewBag.Nombre;
+    string categoria = (string)ViewBag.Categoria;
+    string tipoDoc = (string)ViewBag.TipoDoc;
+    string urlExterna = (string)ViewBag.UrlExterna ?? "";
+    string tipoLegible = tipoDoc == "CrystalReport" ? "SAP BO Crystal Report" : "SAP BO Web Intelligence";
+}
+
+<style>
+    .sapbo-encabezado {
+        background: var(--sr-primario);
+        color: var(--sr-blanco);
+        padding: 12px 16px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+    .sapbo-encabezado h2 { margin: 0; font-size: 18px; }
+    .sapbo-encabezado small { opacity: .8; }
+    .sapbo-encabezado .acciones a {
+        color: var(--sr-blanco);
+        border: 1px solid rgba(255,255,255,.4);
+        padding: 4px 10px;
+        border-radius: 3px;
+        margin-left: 6px;
+        font-size: 12px;
+        text-decoration: none;
+    }
+    .sapbo-encabezado .acciones a:hover { background: rgba(255,255,255,.12); }
+
+    .sapbo-launcher {
+        background: var(--sr-blanco);
+        border: 1px solid var(--sr-borde);
+        border-radius: 8px;
+        padding: 40px 30px;
+        text-align: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,.05);
+        max-width: 640px;
+        margin: 30px auto;
+    }
+    .sapbo-launcher .icono {
+        font-size: 56px;
+        color: var(--sr-primario);
+        margin-bottom: 12px;
+    }
+    .sapbo-launcher h3 {
+        margin: 0 0 6px 0;
+        color: var(--sr-primario);
+        font-size: 22px;
+    }
+    .sapbo-launcher .meta {
+        color: var(--sr-texto-sec);
+        font-size: 13px;
+        margin-bottom: 22px;
+    }
+    .sapbo-launcher .descripcion {
+        color: var(--sr-texto);
+        font-size: 14px;
+        line-height: 1.5;
+        max-width: 480px;
+        margin: 0 auto 26px auto;
+    }
+    .sapbo-launcher .btn-abrir {
+        display: inline-block;
+        background: var(--sr-primario);
+        color: var(--sr-blanco);
+        padding: 14px 32px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 15px;
+        transition: background .15s;
+    }
+    .sapbo-launcher .btn-abrir:hover { background: var(--sr-primario-alt); }
+    .sapbo-launcher .btn-abrir .arrow { margin-left: 6px; }
+    .sapbo-launcher .aviso-auditoria {
+        margin-top: 22px;
+        padding: 10px 14px;
+        background: #F0F7FF;
+        border-left: 3px solid var(--sr-primario);
+        color: var(--sr-texto-sec);
+        font-size: 12px;
+        text-align: left;
+        max-width: 480px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+</style>
+
+<div class="sapbo-encabezado">
+    <div>
+        <h2>@nombre</h2>
+        <small>
+            @if (!string.IsNullOrEmpty(categoria)) { <text>@categoria &nbsp;&middot;&nbsp;</text> }
+            @tipoLegible
+        </small>
+    </div>
+    <div class="acciones">
+        <a href="@Url.Action("Index", "Home")">&larr; Volver al listado</a>
+    </div>
+</div>
+
+<div class="sapbo-launcher">
+    <div class="icono">&#128196;</div>
+    <h3>@nombre</h3>
+    <div class="meta">
+        @if (!string.IsNullOrEmpty(categoria)) { <text>@categoria &nbsp;&middot;&nbsp;</text> }
+        @tipoLegible
+    </div>
+    <div class="descripcion">
+        Este reporte se ejecuta en el visor propio de SAP BusinessObjects.
+        Se abrir&aacute; en una pesta&ntilde;a nueva del navegador para que
+        el visor maneje su propia sesi&oacute;n con el servidor CMC.
+    </div>
+    @if (!string.IsNullOrEmpty(urlExterna))
+    {
+        <a href="@Url.Action("AbrirExterno", "Sapbo", new { url = urlExterna, nombre = nombre, categoria = categoria, tipoDoc = tipoDoc, cuid = ViewBag.Cuid })"
+           target="_blank" rel="noopener" class="btn-abrir">
+            Abrir reporte en SAP BO <span class="arrow">&#8599;</span>
+        </a>
+    }
+    else
+    {
+        <em style="color:var(--sr-texto-sec);">No hay URL disponible para este reporte.</em>
+    }
+    <div class="aviso-auditoria">
+        <strong>Auditor&iacute;a:</strong> el acceso a este reporte por parte de
+        <em>@User.Identity.Name</em> qued&oacute; registrado en el sistema con
+        fecha y hora actuales, incluyendo los par&aacute;metros aplicados (almac&eacute;n,
+        pa&iacute;s, fechas). Esta bit&aacute;cora es consultable en el panel de auditor&iacute;a.
+    </div>
+</div>

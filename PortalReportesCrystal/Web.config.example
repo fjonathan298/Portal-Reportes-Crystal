@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ============================================================================
+  Web.config.example - PLANTILLA DE CONFIGURACION
+  ============================================================================
+  Copiar este archivo como Web.config y reemplazar los valores marcados
+  con __PLACEHOLDER__ por los valores reales de su ambiente.
+
+  IMPORTANTE: Web.config esta en .gitignore para proteger credenciales.
+  NUNCA subir Web.config con credenciales reales al repositorio.
+  ============================================================================
+-->
+<configuration>
+
+  <appSettings>
+    <add key="webpages:Version" value="3.0.0.0" />
+    <add key="webpages:Enabled" value="false" />
+    <add key="ClientValidationEnabled" value="true" />
+    <add key="UnobtrusiveJavaScriptEnabled" value="true" />
+    <add key="ReportesPath" value="~/Reportes/" />
+
+    <!-- Integracion con SAP BusinessObjects REST API -->
+    <add key="SapBo:Habilitado" value="true" />
+    <add key="SapBo:ApiUrl" value="http://__SERVIDOR_SAPBO__:6405/biprws" />
+    <add key="SapBo:OpenDocumentUrl" value="http://__SERVIDOR_SAPBO__:8080/BOE/OpenDocument/opendoc/custom.jsp" />
+    <add key="SapBo:Usuario" value="__USUARIO_SAPBO__" />
+    <add key="SapBo:Password" value="__PASSWORD_SAPBO__" />
+    <add key="SapBo:TipoAuth" value="secEnterprise" />
+    <add key="SapBo:CacheTTLMinutos" value="15" />
+
+    <add key="SapBo:CmsName" value="__SERVIDOR_SAPBO__:6400" />
+    <add key="SapBo:LogonPath" value="/BOE/BI/logon/start.do" />
+
+    <!-- Auditoria del portal -->
+    <add key="Audit:Habilitado" value="false" />
+    <add key="Audit:ConnectionString"
+         value="Server=__SERVIDOR_BD__;Database=__BASE_DE_DATOS__;Integrated Security=SSPI;Application Name=PortalReportesCrystal;Connection Timeout=15;" />
+    <add key="Audit:IntervaloFlushSeg" value="5" />
+    <add key="Audit:MaxLoteInsert" value="500" />
+    <add key="Audit:GruposAdmin" value="__DOMINIO__\__GRUPO_AD_LECTORES__" />
+  </appSettings>
+
+  <system.web>
+    <authentication mode="Windows" />
+    <authorization>
+      <deny users="?" />
+    </authorization>
+    <compilation debug="true" targetFramework="4.8">
+      <assemblies>
+        <add assembly="CrystalDecisions.CrystalReports.Engine, Version=13.0.4000.0, Culture=neutral, PublicKeyToken=692fbea5521e1304" />
+        <add assembly="CrystalDecisions.Shared, Version=13.0.4000.0, Culture=neutral, PublicKeyToken=692fbea5521e1304" />
+        <add assembly="CrystalDecisions.Web, Version=13.0.4000.0, Culture=neutral, PublicKeyToken=692fbea5521e1304" />
+        <add assembly="CrystalDecisions.ReportSource, Version=13.0.4000.0, Culture=neutral, PublicKeyToken=692fbea5521e1304" />
+      </assemblies>
+    </compilation>
+    <httpRuntime targetFramework="4.8" maxRequestLength="51200" />
+  </system.web>
+
+  <system.webServer>
+    <validation validateIntegratedModeConfiguration="false" />
+    <handlers>
+      <remove name="ExtensionlessUrlHandler-Integrated-4.0" />
+      <remove name="OPTIONSVerbHandler" />
+      <remove name="TRACEVerbHandler" />
+      <add name="ExtensionlessUrlHandler-Integrated-4.0" path="*." verb="*" type="System.Web.Handlers.TransferRequestHandler" preCondition="integratedMode,runtimeVersionv4.0" />
+    </handlers>
+  </system.webServer>
+
+  <runtime>
+    <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+      <dependentAssembly>
+        <assemblyIdentity name="System.Web.Helpers" publicKeyToken="31bf3856ad364e35" />
+        <bindingRedirect oldVersion="1.0.0.0-3.0.0.0" newVersion="3.0.0.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Web.WebPages" publicKeyToken="31bf3856ad364e35" />
+        <bindingRedirect oldVersion="1.0.0.0-3.0.0.0" newVersion="3.0.0.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Web.Mvc" publicKeyToken="31bf3856ad364e35" />
+        <bindingRedirect oldVersion="1.0.0.0-5.2.9.0" newVersion="5.2.9.0" />
+      </dependentAssembly>
+    </assemblyBinding>
+  </runtime>
+</configuration>

@@ -1,0 +1,173 @@
+﻿@model PortalReportesCrystal.Models.ReporteViewModel
+@{
+    ViewBag.Title = Model.NombreReporte;
+    ViewBag.BodyClass = "pagina-ver";
+    string raizId = ViewBag.RaizId as string;
+    string path = ViewBag.Path as string;
+    bool tieneParams = Model.Parametros != null && Model.Parametros.Count > 0;
+    bool listo = Model.ParametrosCompletos;
+}
+
+<h2>@Model.NombreReporte</h2>
+
+@* --- Barra de acciones: solo visible cuando los parametros estan completos --- *@
+@if (listo)
+{
+    <div class="barra-acciones">
+        <a href="@Url.Action("Index", "Home")" class="btn btn-sec">&larr; Volver</a>
+
+        @{
+            var rvBase = new RouteValueDictionary();
+            rvBase["raizId"] = raizId;
+            rvBase["path"] = path;
+            foreach (var p in Model.Parametros)
+            {
+                if (!string.IsNullOrEmpty(p.ValorActual))
+                {
+                    rvBase["p_" + p.Nombre] = p.ValorActual;
+                }
+            }
+        }
+
+        @foreach (var formato in new[] { new { key="pdf", label="PDF"},
+                                        new { key="excel", label="Excel"},
+                                        new { key="exceldata", label="Excel (solo datos)"},
+                                        new { key="word", label="Word"} })
+        {
+            var rv = new RouteValueDictionary(rvBase);
+            rv["formato"] = formato.key;
+            <a href="@Url.Action("Exportar", "Reportes", rv)"
+               class="btn"
+               onclick="mostrarToast('Preparando @formato.label...')">@formato.label</a>
+        }
+
+        @if (tieneParams)
+        {
+            <a href="@Url.Action("Ver", "Reportes", new { raizId = raizId, path = path })"
+               class="btn btn-sec" style="margin-left:auto">Cambiar parametros</a>
+        }
+    </div>
+}
+
+@* --- FORMULARIO DE PARAMETROS: si el reporte los tiene y no estan completos --- *@
+@if (tieneParams && !listo)
+{
+    <div class="parametros-panel">
+        <div class="parametros-cabecera">
+            <span class="parametros-icono">&#9881;</span>
+            <div>
+                <strong>Este reporte requiere parametros</strong>
+                <p class="nota-inline">Ingrese los valores solicitados y presione "Generar reporte".</p>
+            </div>
+        </div>
+
+        <form method="get" action="@Url.Action("Ver", "Reportes")" class="parametros-form">
+            <input type="hidden" name="raizId" value="@raizId" />
+            <input type="hidden" name="path" value="@path" />
+
+            @foreach (var p in Model.Parametros)
+            {
+                <div class="parametro-fila">
+                    <label for="p_@p.Nombre">
+                        @p.Etiqueta
+                        @if (!p.Opcional)
+                        {
+                            <span class="obligatorio">*</span>
+                        }
+                        <span class="tipo-hint">(@p.Tipo@(p.MultiValor ? ", multi-valor separado por coma" : ""))</span>
+                    </label>
+
+                    @switch (p.Tipo)
+                    {
+                        case "Number":
+                        case "Currency":
+                            <input type="number" step="any" id="p_@p.Nombre" name="p_@p.Nombre" value="@p.ValorActual" @(p.Opcional ? "" : "required") />
+                            break;
+                        case "Date":
+                            <input type="date" id="p_@p.Nombre" name="p_@p.Nombre" value="@p.ValorActual" @(p.Opcional ? "" : "required") />
+                            break;
+                        case "DateTime":
+                            <input type="datetime-local" id="p_@p.Nombre" name="p_@p.Nombre" value="@p.ValorActual" @(p.Opcional ? "" : "required") />
+                            break;
+                        case "Boolean":
+                            <select id="p_@p.Nombre" name="p_@p.Nombre" @(p.Opcional ? "" : "required")>
+                                <option value="">-- Seleccione --</option>
+                                <option value="true" selected="@(p.ValorActual == "true")">Si (True)</option>
+                                <option value="false" selected="@(p.ValorActual == "false")">No (False)</option>
+                            </select>
+                            break;
+                        default:
+                            <input type="text" id="p_@p.Nombre" name="p_@p.Nombre" value="@p.ValorActual" @(p.Opcional ? "" : "required") />
+                            break;
+                    }
+                </div>
+            }
+
+            <div class="parametros-acciones">
+                <a href="@Url.Action("Index", "Home")" class="btn btn-sec">Cancelar</a>
+                <button type="submit" class="btn" onclick="mostrarCargandoParams()">Generar reporte</button>
+            </div>
+        </form>
+    </div>
+}
+
+@* --- VISOR: solo se muestra si los parametros estan completos --- *@
+@if (listo)
+{
+    <div class="visor-reporte-embed">
+        @* Overlay de carga: cubre el iframe hasta que este termine de cargar el PDF *@
+        <div class="cargando-overlay" id="cargando-visor">
+            <div class="spinner"></div>
+            <p>Generando vista previa...</p>
+            <p class="nota-inline">Solo se cargan las primeras y ultimas filas para mostrarla rapido.</p>
+        </div>
+
+        @{
+            var rvPreview = new RouteValueDictionary(new { raizId = raizId, path = path });
+            foreach (var p in Model.Parametros)
+            {
+                if (!string.IsNullOrEmpty(p.ValorActual))
+                {
+                    rvPreview["p_" + p.Nombre] = p.ValorActual;
+                }
+            }
+        }
+        <iframe src="@Url.Action("Preview", "Reportes", rvPreview)"
+                width="100%"
+                height="900px"
+                frameborder="0"
+                onload="document.getElementById('cargando-visor').classList.add('oculto')"
+                title="Vista previa del reporte @Model.NombreReporte">
+            <p>Su navegador no puede mostrar el visor embebido.</p>
+        </iframe>
+    </div>
+
+    <p class="nota">
+        La vista previa muestra las <strong>primeras 3</strong> y <strong>ultimas 3</strong> paginas del reporte para carga rapida.
+        Para examinar toda la data se recomienda <strong>Excel (solo datos)</strong>.
+    </p>
+}
+
+@* --- Toast de "Preparando descarga" --- *@
+<div id="toast-descarga" class="toast" role="status" aria-live="polite">
+    <div class="spinner-mini"></div>
+    <span id="toast-mensaje">Preparando descarga...</span>
+</div>
+
+<script>
+    // Muestra un toast breve al iniciar una descarga
+    function mostrarToast(msg) {
+        var t = document.getElementById('toast-descarga');
+        var m = document.getElementById('toast-mensaje');
+        if (msg) m.textContent = msg;
+        t.classList.add('visible');
+        // La descarga inicia inmediatamente en otra transaccion; ocultamos el toast tras 3.5s
+        setTimeout(function () { t.classList.remove('visible'); }, 3500);
+    }
+    // Muestra overlay full-page al enviar el formulario de parametros
+    function mostrarCargandoParams() {
+        var t = document.getElementById('toast-descarga');
+        document.getElementById('toast-mensaje').textContent = 'Aplicando parametros y generando...';
+        t.classList.add('visible');
+    }
+</script>

@@ -1,0 +1,122 @@
+﻿@model PortalReportesCrystal.Models.PreviewDatosModel
+@{
+    Layout = null;  // Se renderiza dentro de un iframe; no queremos el layout completo
+    string raizId = ViewBag.RaizId as string;
+    string path = ViewBag.Path as string;
+    string qs = ViewBag.QueryString as string;
+    string urlExcelDatos = Url.Action("Exportar", "Reportes", new { raizId = raizId, path = path, formato = "exceldata" })
+                          + (string.IsNullOrEmpty(qs) ? "" : "&" + qs.Replace("raizId=" + raizId + "&", "").Replace("path=" + Server.UrlEncode(path) + "&", ""));
+    // Reconstruye URL de excel data pasando SOLO los parametros del reporte, no la url
+    var rvExcel = new System.Web.Routing.RouteValueDictionary();
+    rvExcel["raizId"] = raizId;
+    rvExcel["path"] = path;
+    rvExcel["formato"] = "exceldata";
+    if (Request.QueryString != null)
+    {
+        foreach (string k in Request.QueryString.AllKeys)
+        {
+            if (!string.IsNullOrEmpty(k) && k.StartsWith("p_"))
+            {
+                rvExcel[k] = Request.QueryString[k];
+            }
+        }
+    }
+    urlExcelDatos = Url.Action("Exportar", "Reportes", rvExcel);
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Vista de datos - @ViewBag.NombreReporte</title>
+    <link href="~/Content/Site.css" rel="stylesheet" type="text/css" />
+    <style>
+        body { padding: 12px; background: #FFF; }
+        .previa-avisos { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+        .previa-info { flex: 1; min-width: 300px; background: #E3F2FD; border-left: 4px solid #1976D2; padding: 10px 14px; border-radius: 3px; font-size: 13px; }
+        .previa-info strong { color: #0D47A1; }
+        .previa-sugerencia { flex: 1; min-width: 300px; background: #FFF8E1; border-left: 4px solid #FFA726; padding: 10px 14px; border-radius: 3px; font-size: 13px; }
+        .previa-sugerencia .btn { margin-top: 6px; }
+        .previa-scroll { overflow-x: auto; overflow-y: visible; border: 1px solid var(--sr-borde); border-radius: 4px; background: var(--sr-blanco); max-height: 720px; overflow-y: auto; }
+        table.previa-tabla { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 12px; }
+        table.previa-tabla thead th { background: var(--sr-primario); color: var(--sr-blanco); text-align: left; padding: 8px 10px; border-right: 1px solid rgba(255,255,255,0.15); position: sticky; top: 0; white-space: nowrap; z-index: 2; }
+        table.previa-tabla tbody td { padding: 6px 10px; border-bottom: 1px solid #EEE; white-space: nowrap; }
+        table.previa-tabla tbody tr:nth-child(even) td { background: #FAFAFA; }
+        .separador-filas { background: #FFF3E0; }
+        .separador-filas td { text-align: center; font-style: italic; color: #E65100; font-weight: 500; padding: 8px; }
+        .sin-datos { padding: 30px; text-align: center; color: #666; }
+    </style>
+</head>
+<body>
+    @if (Model.SinDatos)
+    {
+        <div class="sin-datos">
+            <h3>Sin datos para mostrar</h3>
+            <p>El reporte se ejecuto correctamente pero no devolvio filas para los parametros seleccionados.</p>
+        </div>
+    }
+    else
+    {
+        <div class="previa-avisos">
+            <div class="previa-info">
+                <strong>Total de filas:</strong> @Model.TotalFilas.ToString("N0")
+                @if (Model.Truncado)
+                {
+                    <text>&nbsp;-&nbsp;Mostrando las <strong>@Model.NInicio primeras</strong> y las <strong>@Model.NFin ultimas</strong>.</text>
+                }
+                else
+                {
+                    <text>&nbsp;-&nbsp;Se muestran todas.</text>
+                }
+            </div>
+            <div class="previa-sugerencia">
+                Para examinar todos los datos, descargue el reporte en formato Excel (solo datos):
+                <br />
+                <a href="@urlExcelDatos" class="btn" onclick="if(window.parent){window.parent.mostrarToast&&window.parent.mostrarToast('Preparando Excel solo datos...');}">Descargar Excel solo datos</a>
+            </div>
+        </div>
+
+        <div class="previa-scroll">
+            <table class="previa-tabla">
+                <thead>
+                    <tr>
+                        @foreach (var h in Model.Cabeceras)
+                        {
+                            <th>@h</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var fila in Model.PrimerasFilas)
+                    {
+                        <tr>
+                            @foreach (var celda in fila)
+                            {
+                                <td>@celda</td>
+                            }
+                        </tr>
+                    }
+                    @if (Model.Truncado)
+                    {
+                        int cols = Model.Cabeceras.Count;
+                        int intermedias = Model.TotalFilas - Model.NInicio - Model.NFin;
+                        <tr class="separador-filas">
+                            <td colspan="@cols">
+                                &vellip;&nbsp;&nbsp; @intermedias.ToString("N0") filas intermedias omitidas &nbsp;&nbsp;&vellip;
+                            </td>
+                        </tr>
+                        foreach (var fila in Model.UltimasFilas)
+                        {
+                            <tr>
+                                @foreach (var celda in fila)
+                                {
+                                    <td>@celda</td>
+                                }
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</body>
+</html>

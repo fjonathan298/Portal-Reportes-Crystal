@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{E24C65DC-7377-472B-9ABA-BC803B73C61A}") = "VB_Web_Multilingual", "VB_Web_Multilingual\", "{A693751C-D3E6-4304-B58C-3EFD1E7724D9}"
+	ProjectSection(WebsiteProperties) = preProject
+		TargetFrameworkMoniker = ".NETFramework,Version%3Dv4.0"
+		Debug.AspNetCompiler.VirtualPath = "/VB_Web_Multilingual"
+		Debug.AspNetCompiler.PhysicalPath = "VB_Web_Multilingual\"
+		Debug.AspNetCompiler.TargetPath = "PrecompiledWeb\VB_Web_Multilingual\"
+		Debug.AspNetCompiler.Updateable = "true"
+		Debug.AspNetCompiler.ForceOverwrite = "true"
+		Debug.AspNetCompiler.FixedNames = "false"
+		Debug.AspNetCompiler.Debug = "True"
+		Release.AspNetCompiler.VirtualPath = "/VB_Web_Multilingual"
+		Release.AspNetCompiler.PhysicalPath = "VB_Web_Multilingual\"
+		Release.AspNetCompiler.TargetPath = "PrecompiledWeb\VB_Web_Multilingual\"
+		Release.AspNetCompiler.Updateable = "true"
+		Release.AspNetCompiler.ForceOverwrite = "true"
+		Release.AspNetCompiler.FixedNames = "false"
+		Release.AspNetCompiler.Debug = "False"
+		VWDPort = "4091"
+		DefaultWebSiteLanguage = "Visual Basic"
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|.NET = Debug|.NET
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A693751C-D3E6-4304-B58C-3EFD1E7724D9}.Debug|.NET.ActiveCfg = Debug|.NET
+		{A693751C-D3E6-4304-B58C-3EFD1E7724D9}.Debug|.NET.Build.0 = Debug|.NET
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

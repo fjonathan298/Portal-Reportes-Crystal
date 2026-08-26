@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{E24C65DC-7377-472B-9ABA-BC803B73C61A}") = "VB_Web_RDObjMod_DBLogonIntegratedSecurity", "VB_Web_RDObjMod_DBLogonIntegratedSecurity\", "{03EFBD89-F0A5-447B-A106-192FB11BD0C3}"
+	ProjectSection(WebsiteProperties) = preProject
+		TargetFrameworkMoniker = ".NETFramework,Version%3Dv4.0"
+		Debug.AspNetCompiler.VirtualPath = "/VB_Web_RDObjMod_DBLogonIntegratedSecurity"
+		Debug.AspNetCompiler.PhysicalPath = "VB_Web_RDObjMod_DBLogonIntegratedSecurity\"
+		Debug.AspNetCompiler.TargetPath = "PrecompiledWeb\VB_Web_RDObjMod_DBLogonIntegratedSecurity\"
+		Debug.AspNetCompiler.Updateable = "true"
+		Debug.AspNetCompiler.ForceOverwrite = "true"
+		Debug.AspNetCompiler.FixedNames = "false"
+		Debug.AspNetCompiler.Debug = "True"
+		Release.AspNetCompiler.VirtualPath = "/VB_Web_RDObjMod_DBLogonIntegratedSecurity"
+		Release.AspNetCompiler.PhysicalPath = "VB_Web_RDObjMod_DBLogonIntegratedSecurity\"
+		Release.AspNetCompiler.TargetPath = "PrecompiledWeb\VB_Web_RDObjMod_DBLogonIntegratedSecurity\"
+		Release.AspNetCompiler.Updateable = "true"
+		Release.AspNetCompiler.ForceOverwrite = "true"
+		Release.AspNetCompiler.FixedNames = "false"
+		Release.AspNetCompiler.Debug = "False"
+		VWDPort = "1792"
+		DefaultWebSiteLanguage = "Visual Basic"
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|.NET = Debug|.NET
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{03EFBD89-F0A5-447B-A106-192FB11BD0C3}.Debug|.NET.ActiveCfg = Debug|.NET
+		{03EFBD89-F0A5-447B-A106-192FB11BD0C3}.Debug|.NET.Build.0 = Debug|.NET
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

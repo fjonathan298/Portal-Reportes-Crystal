@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{E24C65DC-7377-472B-9ABA-BC803B73C61A}") = "CS_Web_CRVObjMod_Parameters", "CS_Web_CRVObjMod_Parameters\", "{6C0099EB-1B61-4ABD-B22D-C47849DB055C}"
+	ProjectSection(WebsiteProperties) = preProject
+		TargetFrameworkMoniker = ".NETFramework,Version%3Dv4.0"
+		Debug.AspNetCompiler.VirtualPath = "/CS_Web_CRVObjMod_Parameters"
+		Debug.AspNetCompiler.PhysicalPath = "CS_Web_CRVObjMod_Parameters\"
+		Debug.AspNetCompiler.TargetPath = "PrecompiledWeb\CS_Web_CRVObjMod_Parameters\"
+		Debug.AspNetCompiler.Updateable = "true"
+		Debug.AspNetCompiler.ForceOverwrite = "true"
+		Debug.AspNetCompiler.FixedNames = "false"
+		Debug.AspNetCompiler.Debug = "True"
+		Release.AspNetCompiler.VirtualPath = "/CS_Web_CRVObjMod_Parameters"
+		Release.AspNetCompiler.PhysicalPath = "CS_Web_CRVObjMod_Parameters\"
+		Release.AspNetCompiler.TargetPath = "PrecompiledWeb\CS_Web_CRVObjMod_Parameters\"
+		Release.AspNetCompiler.Updateable = "true"
+		Release.AspNetCompiler.ForceOverwrite = "true"
+		Release.AspNetCompiler.FixedNames = "false"
+		Release.AspNetCompiler.Debug = "False"
+		VWDPort = "1596"
+		DefaultWebSiteLanguage = "Visual C#"
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|.NET = Debug|.NET
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6C0099EB-1B61-4ABD-B22D-C47849DB055C}.Debug|.NET.ActiveCfg = Debug|.NET
+		{6C0099EB-1B61-4ABD-B22D-C47849DB055C}.Debug|.NET.Build.0 = Debug|.NET
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

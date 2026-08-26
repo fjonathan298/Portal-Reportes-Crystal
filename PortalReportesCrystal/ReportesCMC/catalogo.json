@@ -1,0 +1,18 @@
+{
+  "_comentario": "Catalogo de reportes publicados en servidores externos (SAP BO CMC, Server Reports, etc.). Editar este archivo NO requiere recompilar el portal: el cambio se refleja al recargar la pagina. Solo agregar/quitar/modificar entradas dentro de 'grupos'.",
+
+  "grupos": [
+    {
+      "nombre": "CREDITOS",
+      "descripcion": "Reportes del area de Creditos",
+      "reportes": [
+        {
+          "nombre": "DOCUMENTACION REMITIDA A CREDITOS",
+          "descripcion": "Documentacion remitida al area de creditos por almacen y fecha",
+          "servidor": "SAP BO",
+          "url": "http://SAPBO:8080/BOE/OpenDocument/opendoc/custom.jsp?sIDType=CUID&iDocID=AZOBysqEYlpEnRqGRTJKNp0&sType=rpt&sOutputFormat=H&lsSALMACEN=06&lsSFECHA=20260510&sWindow=New&sRefresh=Y"
+        }
+      ]
+    }
+  ]
+}

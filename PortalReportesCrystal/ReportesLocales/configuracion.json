@@ -1,0 +1,18 @@
+{
+  "_comentario": "Raices de reportes .rpt locales que el portal expone. Cada raiz apunta a una carpeta en disco; sus subcarpetas de primer nivel se convierten en grupos/categorias en la UI del portal. Los .rpt sueltos en la raiz caen en la categoria del prefijoGrupoRaiz. Editar este archivo NO requiere recompilar el portal.",
+
+  "raices": [
+    {
+      "id": "crystalxi",
+      "nombre": "Crystal XI",
+      "ruta": "C:\\CRYSTAL\\06_output\\Input_Procesado",
+      "prefijoGrupoRaiz": "Sin carpeta"
+    },
+    {
+      "id": "sapbo",
+      "nombre": "SAP BO 4.x",
+      "ruta": "C:\\CRYSTAL\\06_output_sapbo\\Input_Procesado",
+      "prefijoGrupoRaiz": "Sin carpeta"
+    }
+  ]
+}

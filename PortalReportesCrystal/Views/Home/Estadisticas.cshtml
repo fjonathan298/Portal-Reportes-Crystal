@@ -1,0 +1,225 @@
+﻿@using PortalReportesCrystal.Models
+@model PortalReportesCrystal.Models.EstadisticasViewModel
+@{
+    ViewBag.Title = "Estadísticas SAP BO";
+
+    int totalLicencia = Model.Licencias.Sum(l => l.Total);
+    int usoLicencia = Model.Licencias.Sum(l => l.EnUso);
+    int porcentaje = totalLicencia > 0 ? (int)Math.Round((double)usoLicencia * 100 / totalLicencia) : 0;
+    string claseBarra = porcentaje >= 90 ? "stats-progreso-rojo"
+                        : porcentaje >= 70 ? "stats-progreso-amarillo"
+                                          : "stats-progreso-verde";
+
+    int servidoresRunning = Model.Servidores.Count(s =>
+        string.Equals(s.Estado, "Running", StringComparison.OrdinalIgnoreCase));
+}
+
+<div class="stats-cabecera">
+    <h2>Estadísticas del servidor SAP BusinessObjects</h2>
+    <a href="@Url.Action("Estadisticas", "Home")" class="stats-boton-refresh">
+        &#10227; Actualizar
+    </a>
+</div>
+
+<p style="color: var(--sr-texto-sec); font-size: 13px; margin-bottom: 20px;">
+    Información consultada en tiempo real vía API REST de SAP BO. El resumen de reportes usa el cache
+    del portal @if (Model.UltimoEscaneo.HasValue) { <text>(último escaneo: @Model.UltimoEscaneo.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm"))</text> }.
+</p>
+
+<div class="stats-grid">
+
+    @* -------- Tarjeta: Reportes en CMS -------- *@
+    <div class="stats-card">
+        <h3 class="stats-card-titulo">
+            &#128193; Reportes en CMS
+            <span class="stats-conteo">@Model.TotalReportes.ToString("N0")</span>
+        </h3>
+        <div class="stats-metrica-grande">@Model.TotalReportes.ToString("N0")</div>
+        <div class="stats-metrica-grande-etiqueta">Documentos totales descubiertos</div>
+        <div class="stats-metrica">
+            <span class="stats-metrica-etiqueta">Crystal Reports (.rpt, CR4E)</span>
+            <span class="stats-metrica-valor">@Model.TotalCrystalReports.ToString("N0")</span>
+        </div>
+        <div class="stats-metrica">
+            <span class="stats-metrica-etiqueta">Web Intelligence</span>
+            <span class="stats-metrica-valor">@Model.TotalWebI.ToString("N0")</span>
+        </div>
+        <div class="stats-metrica">
+            <span class="stats-metrica-etiqueta">Origen de los datos</span>
+            <span class="stats-metrica-valor">@(Model.DatosDesdeCache ? "Cache" : "En vivo")</span>
+        </div>
+    </div>
+
+    @* -------- Tarjeta: Licencias -------- *@
+    <div class="stats-card">
+        <h3 class="stats-card-titulo">
+            &#128273; Licencias
+            @if (Model.Licencias.Any())
+            {
+                <span class="stats-conteo">@Model.Licencias.Count</span>
+            }
+        </h3>
+        @if (!string.IsNullOrEmpty(Model.LicenciasError))
+        {
+            <div class="stats-mensaje-error">
+                @Model.LicenciasError
+            </div>
+            <p style="font-size: 12px; color: var(--sr-texto-sec); margin-top: 10px;">
+                Información no disponible en esta versión del servidor o el usuario configurado
+                no tiene permisos de administración.
+            </p>
+        }
+        else if (!Model.Licencias.Any())
+        {
+            <div class="stats-tabla-vacia">Sin información de licencias.</div>
+        }
+        else
+        {
+            if (totalLicencia > 0)
+            {
+                <div class="stats-metrica-grande">@usoLicencia / @totalLicencia</div>
+                <div class="stats-metrica-grande-etiqueta">Licencias en uso</div>
+                <div class="stats-progreso" title="@porcentaje% en uso">
+                    <div class="stats-progreso-barra @claseBarra" style="width: @porcentaje%;">
+                        @porcentaje%
+                    </div>
+                </div>
+            }
+            foreach (var lic in Model.Licencias)
+            {
+                <div class="stats-metrica">
+                    <span class="stats-metrica-etiqueta">
+                        @lic.Producto <small>(@lic.Tipo)</small>
+                    </span>
+                    <span class="stats-metrica-valor">
+                        @if (lic.Total > 0)
+                        {
+                            <text>@lic.EnUso / @lic.Total</text>
+                        }
+                        else
+                        {
+                            <text>—</text>
+                        }
+                    </span>
+                </div>
+                if (!string.IsNullOrEmpty(lic.Expiracion))
+                {
+                    <div class="stats-metrica">
+                        <span class="stats-metrica-etiqueta">Expira</span>
+                        <span class="stats-metrica-valor">@lic.Expiracion</span>
+                    </div>
+                }
+            }
+        }
+    </div>
+
+    @* -------- Tarjeta: Sesiones activas -------- *@
+    <div class="stats-card stats-card-wide">
+        <h3 class="stats-card-titulo">
+            &#128101; Sesiones activas
+            @if (Model.Sesiones.Any())
+            {
+                <span class="stats-conteo">@Model.Sesiones.Count</span>
+            }
+        </h3>
+        @if (!string.IsNullOrEmpty(Model.SesionesError))
+        {
+            <div class="stats-mensaje-error">@Model.SesionesError</div>
+            <p style="font-size: 12px; color: var(--sr-texto-sec); margin-top: 10px;">
+                El endpoint <code>/sessions</code> puede no estar habilitado o el usuario
+                no tiene permisos suficientes.
+            </p>
+        }
+        else if (!Model.Sesiones.Any())
+        {
+            <div class="stats-tabla-vacia">No hay sesiones activas registradas.</div>
+        }
+        else
+        {
+            <table class="stats-tabla">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Tipo de sesión</th>
+                        <th>Hora de conexión</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Model.Sesiones)
+                    {
+                        <tr>
+                            <td>@(s.Usuario ?? "—")</td>
+                            <td>
+                                <span class="stats-badge stats-badge-neutro">
+                                    @(s.TipoSesion ?? "—")
+                                </span>
+                            </td>
+                            <td>@(s.HoraInicio ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    @* -------- Tarjeta: Servidores -------- *@
+    <div class="stats-card stats-card-wide">
+        <h3 class="stats-card-titulo">
+            &#128421; Servidores
+            @if (Model.Servidores.Any())
+            {
+                <span class="stats-conteo">
+                    @servidoresRunning / @Model.Servidores.Count activos
+                </span>
+            }
+        </h3>
+        @if (!string.IsNullOrEmpty(Model.ServidoresError))
+        {
+            <div class="stats-mensaje-error">@Model.ServidoresError</div>
+            <p style="font-size: 12px; color: var(--sr-texto-sec); margin-top: 10px;">
+                La consulta de servidores requiere permisos de administrador en el CMS.
+            </p>
+        }
+        else if (!Model.Servidores.Any())
+        {
+            <div class="stats-tabla-vacia">No se pudieron listar los servidores.</div>
+        }
+        else
+        {
+            <table class="stats-tabla">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Tipo</th>
+                        <th>Estado</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var srv in Model.Servidores)
+                    {
+                        string clase = string.Equals(srv.Estado, "Running", StringComparison.OrdinalIgnoreCase)
+                            ? "stats-badge-ok"
+                            : string.Equals(srv.Estado, "Stopped", StringComparison.OrdinalIgnoreCase)
+                                ? "stats-badge-error"
+                                : "stats-badge-warning";
+                        <tr>
+                            <td><strong>@(srv.Nombre ?? "—")</strong></td>
+                            <td>@(srv.Tipo ?? "—")</td>
+                            <td><span class="stats-badge @clase">@srv.Estado</span></td>
+                            <td style="color: var(--sr-texto-sec); font-size: 12px;">
+                                @(srv.Descripcion ?? "—")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+</div>
+
+<p style="font-size: 12px; color: var(--sr-texto-sec); margin-top: 20px; text-align: center;">
+    Los datos de sesiones, licencias y servidores se consultan en tiempo real cada vez que se carga esta página.
+    El resumen de reportes usa el cache del portal (TTL configurable en Web.config).
+</p>

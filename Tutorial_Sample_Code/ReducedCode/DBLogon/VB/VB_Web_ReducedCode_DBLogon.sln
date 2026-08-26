@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{E24C65DC-7377-472B-9ABA-BC803B73C61A}") = "VB_Web_ReducedCode_DBLogon", "VB_Web_ReducedCode_DBLogon\", "{8540091D-B2BE-45E9-A0E0-6FF828808022}"
+	ProjectSection(WebsiteProperties) = preProject
+		TargetFrameworkMoniker = ".NETFramework,Version%3Dv4.0"
+		Debug.AspNetCompiler.VirtualPath = "/VB_Web_ReducedCode_DBLogon"
+		Debug.AspNetCompiler.PhysicalPath = "VB_Web_ReducedCode_DBLogon\"
+		Debug.AspNetCompiler.TargetPath = "PrecompiledWeb\VB_Web_ReducedCode_DBLogon\"
+		Debug.AspNetCompiler.Updateable = "true"
+		Debug.AspNetCompiler.ForceOverwrite = "true"
+		Debug.AspNetCompiler.FixedNames = "false"
+		Debug.AspNetCompiler.Debug = "True"
+		Release.AspNetCompiler.VirtualPath = "/VB_Web_ReducedCode_DBLogon"
+		Release.AspNetCompiler.PhysicalPath = "VB_Web_ReducedCode_DBLogon\"
+		Release.AspNetCompiler.TargetPath = "PrecompiledWeb\VB_Web_ReducedCode_DBLogon\"
+		Release.AspNetCompiler.Updateable = "true"
+		Release.AspNetCompiler.ForceOverwrite = "true"
+		Release.AspNetCompiler.FixedNames = "false"
+		Release.AspNetCompiler.Debug = "False"
+		VWDPort = "2815"
+		DefaultWebSiteLanguage = "Visual Basic"
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|.NET = Debug|.NET
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8540091D-B2BE-45E9-A0E0-6FF828808022}.Debug|.NET.ActiveCfg = Debug|.NET
+		{8540091D-B2BE-45E9-A0E0-6FF828808022}.Debug|.NET.Build.0 = Debug|.NET
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{E24C65DC-7377-472B-9ABA-BC803B73C61A}") = "CS_Web_Data_DataSets", "CS_Web_Data_DataSets\", "{DD60C6CC-35F1-437F-9A91-B8F25D649FAB}"
+	ProjectSection(WebsiteProperties) = preProject
+		TargetFrameworkMoniker = ".NETFramework,Version%3Dv4.0"
+		Debug.AspNetCompiler.VirtualPath = "/CS_Web_Data_DataSets"
+		Debug.AspNetCompiler.PhysicalPath = "CS_Web_Data_DataSets\"
+		Debug.AspNetCompiler.TargetPath = "PrecompiledWeb\CS_Web_Data_DataSets\"
+		Debug.AspNetCompiler.Updateable = "true"
+		Debug.AspNetCompiler.ForceOverwrite = "true"
+		Debug.AspNetCompiler.FixedNames = "false"
+		Debug.AspNetCompiler.Debug = "True"
+		Release.AspNetCompiler.VirtualPath = "/CS_Web_Data_DataSets"
+		Release.AspNetCompiler.PhysicalPath = "CS_Web_Data_DataSets\"
+		Release.AspNetCompiler.TargetPath = "PrecompiledWeb\CS_Web_Data_DataSets\"
+		Release.AspNetCompiler.Updateable = "true"
+		Release.AspNetCompiler.ForceOverwrite = "true"
+		Release.AspNetCompiler.FixedNames = "false"
+		Release.AspNetCompiler.Debug = "False"
+		VWDPort = "1270"
+		DefaultWebSiteLanguage = "Visual C#"
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|.NET = Debug|.NET
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DD60C6CC-35F1-437F-9A91-B8F25D649FAB}.Debug|.NET.ActiveCfg = Debug|.NET
+		{DD60C6CC-35F1-437F-9A91-B8F25D649FAB}.Debug|.NET.Build.0 = Debug|.NET
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

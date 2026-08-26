@@ -1,0 +1,86 @@
+﻿@*
+    ============================================================================
+    _Layout.cshtml - PLANTILLA MAESTRA (Master Page)
+    ============================================================================
+    Este archivo define la estructura HTML que TODAS las paginas comparten:
+    - El <head> con el titulo y el CSS
+    - La barra de navegacion superior
+    - El footer
+
+    @RenderBody() es el "hueco" donde cada pagina inyecta su contenido.
+
+    Ejemplo: cuando el usuario abre /Home/Index, MVC renderiza Index.cshtml
+    DENTRO de este Layout, reemplazando @RenderBody().
+
+    @ViewBag es un diccionario dinamico que los Controllers usan para
+    pasar datos simples a la vista (ej: ViewBag.Title = "Mi Pagina").
+
+    @Url.Action("Index", "Home") genera la URL correcta: /Home/Index
+    Esto es mejor que escribir "/Home/Index" a mano, porque si cambias
+    las rutas en RouteConfig.cs, las URLs se actualizan automaticamente.
+    ============================================================================
+*@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewBag.Title - Portal de Reportes Super Repuestos</title>
+    @* Favicon usa el mismo logo SVG (soportado en navegadores modernos) *@
+    <link rel="icon" type="image/svg+xml" href="~/Content/logo-superrepuestos.svg" />
+    @* ~ (tilde) significa "raiz del sitio web" *@
+    <link href="~/Content/Site.css" rel="stylesheet" type="text/css" />
+</head>
+<body class="@ViewBag.BodyClass">
+    <header>
+        <nav>
+            <div class="nav-container">
+                @* Logo corporativo + nombre del portal.
+                   El logo es SVG, escala perfectamente a cualquier resolucion. *@
+                <a href="@Url.Action("Index", "Home")" class="nav-brand">
+                    <img src="~/Content/logo-superrepuestos.svg" alt="Super Repuestos" />
+                    <span class="nav-brand-text">Portal de Reportes</span>
+                </a>
+                <div class="nav-actions">
+                    @if (PortalReportesCrystal.Services.SapBoClient.Habilitado)
+                    {
+                        <a href="@Url.Action("Estadisticas", "Home")" class="nav-link">Estadísticas SAP BO</a>
+                    }
+                    @{
+                        // Enlace "Auditoria" visible solo si el usuario pertenece a
+                        // alguno de los grupos AD configurados en Web.config -> Audit:GruposAdmin
+                        bool _esAdminAudit = false;
+                        try
+                        {
+                            string _grupos = System.Configuration.ConfigurationManager.AppSettings["Audit:GruposAdmin"] ?? "";
+                            if (!string.IsNullOrWhiteSpace(_grupos) && User != null && User.Identity != null && User.Identity.IsAuthenticated)
+                            {
+                                foreach (var g in _grupos.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
+                                {
+                                    if (User.IsInRole(g.Trim())) { _esAdminAudit = true; break; }
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+                    @if (_esAdminAudit)
+                    {
+                        <a href="@Url.Action("Dashboard", "Auditoria")" class="nav-link">Auditoría</a>
+                    }
+                    @* User.Identity.Name muestra el usuario Windows autenticado *@
+                    <span class="nav-user">@User.Identity.Name</span>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <main class="container">
+        @* Aqui se inyecta el contenido de cada pagina (Index.cshtml, Ver.cshtml, etc.) *@
+        @RenderBody()
+    </main>
+    <footer>
+        <div class="container">
+            <p><strong>Super Repuestos El Salvador</strong> &nbsp;|&nbsp; Portal de Reportes &nbsp;|&nbsp; &copy; @DateTime.Now.Year</p>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,20 @@
+﻿@model string
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Error - @ViewBag.NombreReporte</title>
+    <link href="~/Content/Site.css" rel="stylesheet" type="text/css" />
+    <style>body { padding: 20px; background: #FFF; }</style>
+</head>
+<body>
+    <div class="aviso aviso-error">
+        <h3>No se pudo generar la vista previa</h3>
+        <p>@Model</p>
+        <p class="nota">Este reporte quedara marcado en el listado principal con un indicador de problemas hasta que se ejecute con exito.</p>
+    </div>
+</body>
+</html>

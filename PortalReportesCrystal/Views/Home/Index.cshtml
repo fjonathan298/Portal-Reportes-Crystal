@@ -1,0 +1,379 @@
+﻿@using PortalReportesCrystal.Models
+@model HomeViewModel
+
+@{
+    ViewBag.Title = "Reportes Disponibles";
+    var grupos = Model.Reportes.GroupBy(r => r.Categoria).OrderBy(g => g.Key).ToList();
+    int conParams = Model.Reportes.Count(r => r.TieneParametros == true);
+    int sinParams = Model.Reportes.Count(r => r.TieneParametros == false);
+    int desconocidos = Model.Reportes.Count(r => r.TieneParametros == null && r.Tipo == TipoReporte.Local);
+    int conProblemas = Model.Reportes.Count(r => !string.IsNullOrEmpty(r.UltimoError));
+    int sinProblemas = Model.Reportes.Count - conProblemas;
+    int serverReport = Model.Reportes.Count(r => r.Tipo == TipoReporte.Local);
+    int sapBo = Model.Reportes.Count(r => r.Tipo == TipoReporte.WebI);
+    int externos = Model.Reportes.Count(r => r.Tipo == TipoReporte.Externo);
+}
+
+<div class="cabecera-listado">
+    <h2>Reportes Disponibles</h2>
+    <div class="cabecera-info">
+        <p>Bienvenido, <strong>@Model.UsuarioActual</strong></p>
+        <p class="nota-inline">@Model.Reportes.Count reportes en @grupos.Count carpetas</p>
+    </div>
+    @if (grupos.Count > 1)
+    {
+        <div class="acciones-listado">
+            <button type="button" class="btn btn-sec" onclick="expandirTodo(true)">Expandir todo</button>
+            <button type="button" class="btn btn-sec" onclick="expandirTodo(false)">Colapsar todo</button>
+        </div>
+    }
+</div>
+
+@* --- BARRA DE BUSQUEDA Y FILTROS --- *@
+<div class="filtros-panel">
+    <div class="filtro-busqueda">
+        <span class="filtro-icono">&#128269;</span>
+        <input type="search" id="busqueda"
+               placeholder="Buscar reporte por nombre, carpeta u origen..."
+               autocomplete="off" />
+        <button type="button" class="btn-limpiar" onclick="limpiarBusqueda()" title="Limpiar" aria-label="Limpiar busqueda">&times;</button>
+    </div>
+
+    <div class="filtros-chips">
+        <span class="filtro-label">Parametros:</span>
+        <button type="button" class="chip chip-activo" data-filtro-param="todos">Todos <span class="chip-conteo">@Model.Reportes.Count</span></button>
+        <button type="button" class="chip" data-filtro-param="con">Con parametros <span class="chip-conteo">@conParams</span></button>
+        <button type="button" class="chip" data-filtro-param="sin">Sin parametros <span class="chip-conteo">@sinParams</span></button>
+        @if (desconocidos > 0)
+        {
+            <button type="button" class="chip chip-warn" data-filtro-param="desconocido" title="Aun no analizados (cache en construccion)">Analizando <span class="chip-conteo">@desconocidos</span></button>
+        }
+
+        <span class="filtro-separador"></span>
+        <span class="filtro-label">Origen:</span>
+        <button type="button" class="chip chip-activo" data-filtro-tipo="todos">Todos</button>
+        @if (serverReport > 0)
+        {
+            <button type="button" class="chip" data-filtro-tipo="serverreport">Server Report <span class="chip-conteo">@serverReport</span></button>
+        }
+        @if (sapBo > 0)
+        {
+            <button type="button" class="chip" data-filtro-tipo="sapbo">SAP BO <span class="chip-conteo">@sapBo</span></button>
+        }
+        @if (externos > 0)
+        {
+            <button type="button" class="chip" data-filtro-tipo="externo">Externos <span class="chip-conteo">@externos</span></button>
+        }
+
+        <span class="filtro-separador"></span>
+        <span class="filtro-label">Estado:</span>
+        <button type="button" class="chip chip-ok" data-filtro-estado="ok">
+            &#10003; Sin problemas <span class="chip-conteo">@sinProblemas</span>
+        </button>
+        @if (conProblemas > 0)
+        {
+            <button type="button" class="chip chip-error" data-filtro-estado="problemas">
+                &#9888; Con problemas <span class="chip-conteo">@conProblemas</span>
+            </button>
+        }
+    </div>
+
+    <div class="resultado-busqueda" id="resultado-busqueda"></div>
+
+    @if (Model.WebIHabilitado && sapBo > 0 && Model.WebIUltimaActualizacion.HasValue)
+    {
+        <div class="webi-cache-info">
+            @if (Model.WebIDesdeCache)
+            {
+                <span title="Los reportes WebI se obtuvieron del cache local">&#128337; WebI: datos en cache desde @Model.WebIUltimaActualizacion.Value.ToLocalTime().ToString("HH:mm")</span>
+            }
+            else
+            {
+                <span title="Los reportes WebI se acaban de consultar del servidor">&#9989; WebI: datos frescos</span>
+            }
+        </div>
+    }
+</div>
+
+@if (Model.Reportes.Any())
+{
+    Func<PortalReportesCrystal.Models.ReporteInfo, bool> esSapBo = r =>
+        r.Tipo == TipoReporte.WebI;
+
+    var reportesSR = Model.Reportes.Where(r => !esSapBo(r)).ToList();
+    var reportesBO = Model.Reportes.Where(r => esSapBo(r)).ToList();
+    var gruposSR = reportesSR.GroupBy(r => r.Categoria).OrderBy(g => g.Key).ToList();
+    var gruposBO = reportesBO.GroupBy(r => r.Categoria).OrderBy(g => g.Key).ToList();
+
+    var secciones = new[] {
+        new { Titulo = "Server Report", Icono = "&#128421;", Reportes = reportesSR, Grupos = gruposSR, Clase = "seccion-serverreport" },
+        new { Titulo = "SAP BO", Icono = "&#9729;", Reportes = reportesBO, Grupos = gruposBO, Clase = "seccion-sapbo" }
+    };
+
+    <div class="lista-carpetas" id="lista-carpetas">
+    @foreach (var seccion in secciones)
+    {
+        if (!seccion.Reportes.Any()) { continue; }
+
+        <details class="seccion-origen @seccion.Clase" open>
+            <summary class="seccion-origen-titulo">
+                <span class="seccion-origen-icono">@Html.Raw(seccion.Icono)</span>
+                <span class="seccion-origen-nombre">@seccion.Titulo</span>
+                <span class="seccion-origen-conteo" data-seccion-total="@seccion.Reportes.Count">@seccion.Reportes.Count reportes</span>
+                <span class="seccion-origen-flecha">&#9662;</span>
+            </summary>
+
+        @foreach (var grupo in seccion.Grupos)
+        {
+            <details class="grupo-reportes" data-grupo="@grupo.Key" @(seccion.Grupos.Count <= 3 ? "open" : "")>
+                <summary class="grupo-titulo">
+                    <span class="grupo-icono">&#128193;</span>
+                    <span class="grupo-nombre">@grupo.Key</span>
+                    <span class="grupo-conteo" data-visibles="@grupo.Count()">@grupo.Count() reportes</span>
+                    <span class="grupo-flecha">&#9662;</span>
+                </summary>
+
+                <table class="tabla-reportes">
+                    <thead>
+                        <tr>
+                            <th>Reporte</th>
+                            <th>Origen</th>
+                            <th>Params</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var reporte in grupo.OrderBy(r => r.Nombre))
+                        {
+                            string dataTipo = reporte.Tipo == TipoReporte.WebI ? "sapbo"
+                                              : reporte.Tipo == TipoReporte.Externo ? "externo"
+                                              : "serverreport";
+                            string dataParam = reporte.TieneParametros == true ? "con"
+                                              : reporte.TieneParametros == false ? "sin"
+                                              : "desconocido";
+                            string dataEstado = string.IsNullOrEmpty(reporte.UltimoError) ? "ok" : "problemas";
+                            string busq = (reporte.Nombre + " " + reporte.Categoria + " " + (reporte.Servidor ?? "") + " " + (reporte.Descripcion ?? "")).ToLower();
+                            <tr data-tipo="@dataTipo" data-param="@dataParam" data-estado="@dataEstado" data-busq="@busq" class="@(dataEstado == "problemas" ? "fila-con-problemas" : "")">
+                                <td>
+                                    <strong>@reporte.Nombre</strong>
+                                    @if (!string.IsNullOrEmpty(reporte.UltimoError))
+                                    {
+                                        <span class="badge badge-alerta" title="Ultimo intento: @reporte.UltimoError">&#9888; Con problemas</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(reporte.Descripcion))
+                                    {
+                                        <br />
+                                        <span class="nota-inline">@reporte.Descripcion</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (reporte.Tipo == TipoReporte.WebI && reporte.Servidor == "SAP BO .rpt")
+                                    {
+                                        <span class="badge badge-sapbo">SAP BO .rpt</span>
+                                    }
+                                    else if (reporte.Tipo == TipoReporte.WebI)
+                                    {
+                                        <span class="badge badge-webi">SAP BO WebI</span>
+                                    }
+                                    else if (reporte.Tipo == TipoReporte.Local)
+                                    {
+                                        <span class="badge badge-local">@reporte.Servidor</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-externo">@(string.IsNullOrEmpty(reporte.Servidor) ? "Externo" : reporte.Servidor)</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (reporte.TieneParametros == true)
+                                    {
+                                        <span class="badge badge-param" title="Solicita valores al usuario antes de ejecutar">Si</span>
+                                    }
+                                    else if (reporte.TieneParametros == false)
+                                    {
+                                        <span class="badge badge-noparam">No</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-desconocido" title="Aun no analizado - se muestra al terminar el escaneo">?</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (reporte.Tipo == TipoReporte.Local)
+                                    {
+                                        <a href="@Url.Action("Ver", "Reportes", new { raizId = reporte.RaizId, path = reporte.PathRelativo })" class="btn">Ver</a>
+                                        <a href="@Url.Action("Exportar", "Reportes", new { raizId = reporte.RaizId, path = reporte.PathRelativo, formato = "pdf" })" class="btn btn-sec">PDF</a>
+                                        <a href="@Url.Action("Exportar", "Reportes", new { raizId = reporte.RaizId, path = reporte.PathRelativo, formato = "excel" })" class="btn btn-sec">Excel</a>
+                                        <a href="@Url.Action("Exportar", "Reportes", new { raizId = reporte.RaizId, path = reporte.PathRelativo, formato = "exceldata" })" class="btn btn-sec" title="Datos sin formato, listos para analisis en Excel">Excel datos</a>
+                                    }
+                                    else if (reporte.Tipo == TipoReporte.WebI)
+                                    {
+                                        // Reportes SAP BO (WebI y Crystal publicados en servidor):
+                                        // se abren DENTRO del portal via /Sapbo/Ver para poder auditar
+                                        // apertura, descargas y filtros aplicados (ver SapboController).
+                                        string tipoDoc = reporte.Servidor == "SAP BO .rpt" ? "CrystalReport" : "Webi";
+                                        <a href="@Url.Action("Ver", "Sapbo", new { nombre = reporte.Nombre, categoria = reporte.Categoria, tipoDoc = tipoDoc, url = reporte.UrlExterna })" class="btn btn-webi">Abrir en portal &rarr;</a>
+                                    }
+                                    else
+                                    {
+                                        // Externos (CMC no-SAPBO, otros portales): siguen abriendo en nueva pestana
+                                        <a href="@reporte.UrlExterna" target="_blank" rel="noopener" class="btn">Abrir en @reporte.Servidor &rarr;</a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </details>
+        }
+        </details>
+    }
+    </div>
+}
+else
+{
+    <div class="aviso">
+        <p>No hay reportes disponibles.</p>
+    </div>
+}
+
+<script>
+    // ------- Expandir/Colapsar todos los grupos -------
+    function expandirTodo(abrir) {
+        document.querySelectorAll('.lista-carpetas details').forEach(function (d) {
+            if (abrir) { d.setAttribute('open', ''); } else { d.removeAttribute('open'); }
+        });
+        try { sessionStorage.setItem('carpetas.abiertas', abrir ? '1' : '0'); } catch (e) { }
+    }
+
+    // ------- Estado de filtros actual -------
+    var filtroParam = 'todos';
+    var filtroTipo = 'todos';
+    var filtroEstado = 'todos';
+    var textoBusqueda = '';
+
+    // ------- Aplicar filtros a todas las filas -------
+    function aplicarFiltros() {
+        var totalVisibles = 0;
+        var busqLower = textoBusqueda.toLowerCase().trim();
+
+        document.querySelectorAll('.lista-carpetas details').forEach(function (grupo) {
+            var visiblesEnGrupo = 0;
+            grupo.querySelectorAll('tbody tr').forEach(function (fila) {
+                var tipo = fila.getAttribute('data-tipo');
+                var param = fila.getAttribute('data-param');
+                var estado = fila.getAttribute('data-estado');
+                var busq = fila.getAttribute('data-busq') || '';
+
+                var pasaTipo = (filtroTipo === 'todos') || (tipo === filtroTipo);
+                var pasaParam = (filtroParam === 'todos') || (param === filtroParam);
+                var pasaEstado = (filtroEstado === 'todos') || (estado === filtroEstado);
+                var pasaBusq = (busqLower === '') || (busq.indexOf(busqLower) >= 0);
+
+                if (pasaTipo && pasaParam && pasaEstado && pasaBusq) {
+                    fila.style.display = '';
+                    visiblesEnGrupo++;
+                    totalVisibles++;
+                } else {
+                    fila.style.display = 'none';
+                }
+            });
+
+            // Actualiza el contador y esconde el grupo entero si esta vacio
+            var contador = grupo.querySelector('.grupo-conteo');
+            if (contador) {
+                contador.textContent = visiblesEnGrupo + ' reportes';
+                contador.setAttribute('data-visibles', visiblesEnGrupo);
+            }
+            grupo.style.display = visiblesEnGrupo === 0 ? 'none' : '';
+
+            // Auto-expandir cuando hay busqueda activa y resultados
+            if (busqLower !== '' && visiblesEnGrupo > 0) {
+                grupo.setAttribute('open', '');
+            }
+        });
+
+        // Ocultar secciones de origen cuando todos sus grupos estan ocultos
+        document.querySelectorAll('.seccion-origen').forEach(function (seccion) {
+            var visiblesEnSeccion = 0;
+            seccion.querySelectorAll('details.grupo-reportes').forEach(function (g) {
+                var c = g.querySelector('.grupo-conteo');
+                if (c) { visiblesEnSeccion += parseInt(c.getAttribute('data-visibles') || '0', 10); }
+            });
+            var conteoSeccion = seccion.querySelector('.seccion-origen-conteo');
+            if (conteoSeccion) {
+                conteoSeccion.textContent = visiblesEnSeccion + ' reportes';
+            }
+            seccion.style.display = visiblesEnSeccion === 0 ? 'none' : '';
+        });
+
+        // Mensaje de resultado global
+        var msg = document.getElementById('resultado-busqueda');
+        if (busqLower !== '' || filtroParam !== 'todos' || filtroTipo !== 'todos') {
+            msg.textContent = totalVisibles + ' reportes coinciden con los filtros';
+            msg.classList.add('visible');
+        } else {
+            msg.textContent = '';
+            msg.classList.remove('visible');
+        }
+    }
+
+    // ------- Buscador con debounce -------
+    var busqTimeout;
+    document.getElementById('busqueda').addEventListener('input', function (e) {
+        textoBusqueda = e.target.value;
+        clearTimeout(busqTimeout);
+        busqTimeout = setTimeout(aplicarFiltros, 150);
+    });
+
+    function limpiarBusqueda() {
+        var input = document.getElementById('busqueda');
+        input.value = '';
+        textoBusqueda = '';
+        aplicarFiltros();
+        input.focus();
+    }
+
+    // ------- Chips de filtros (parametros y tipo) -------
+    document.querySelectorAll('.chip[data-filtro-param]').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+            document.querySelectorAll('.chip[data-filtro-param]').forEach(function (c) { c.classList.remove('chip-activo'); });
+            chip.classList.add('chip-activo');
+            filtroParam = chip.getAttribute('data-filtro-param');
+            aplicarFiltros();
+        });
+    });
+    document.querySelectorAll('.chip[data-filtro-tipo]').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+            document.querySelectorAll('.chip[data-filtro-tipo]').forEach(function (c) { c.classList.remove('chip-activo'); });
+            chip.classList.add('chip-activo');
+            filtroTipo = chip.getAttribute('data-filtro-tipo');
+            aplicarFiltros();
+        });
+    });
+    // Filtro de estado. Toggle on/off, mutuamente exclusivo.
+    document.querySelectorAll('.chip[data-filtro-estado]').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+            var yaActivo = chip.classList.contains('chip-activo');
+            document.querySelectorAll('.chip[data-filtro-estado]').forEach(function (c) {
+                c.classList.remove('chip-activo');
+            });
+            if (yaActivo) {
+                filtroEstado = 'todos';
+            } else {
+                chip.classList.add('chip-activo');
+                filtroEstado = chip.getAttribute('data-filtro-estado');
+            }
+            aplicarFiltros();
+        });
+    });
+
+    // ------- Recordar preferencia de expandir -------
+    (function () {
+        try {
+            var v = sessionStorage.getItem('carpetas.abiertas');
+            if (v === '1') { expandirTodo(true); }
+            else if (v === '0') { expandirTodo(false); }
+        } catch (e) { }
+    })();
+</script>

@@ -1,0 +1,20 @@
+﻿@* Vista que se muestra cuando falla la generacion de un reporte.
+   El Controller la invoca desde ReportesController.VistaDeError() *@
+@model PortalReportesCrystal.Models.ErrorReporteViewModel
+
+@{
+    ViewBag.Title = "Error al generar el reporte";
+}
+
+<div class="aviso aviso-error">
+    <h2>No se pudo generar el reporte</h2>
+
+    @* Nombre del reporte que fallo, para que el usuario sepa cual fue *@
+    <p><strong>Reporte:</strong> @Model.NombreReporte</p>
+
+    @* Mensaje ya traducido a lenguaje comprensible por el Controller *@
+    <p>@Model.Mensaje</p>
+
+    @* Url.Action genera la URL de vuelta al listado principal *@
+    <p><a href="@Url.Action("Index", "Home")" class="btn">Volver al listado</a></p>
+</div>

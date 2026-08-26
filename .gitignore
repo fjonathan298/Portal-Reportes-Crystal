@@ -1,0 +1,64 @@
+# =============================================================================
+# .gitignore - Portal de Reportes Crystal
+# =============================================================================
+
+# --- Binarios y compilados ---
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+*.dll
+*.exe
+*.pdb
+*.cache
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# --- NuGet ---
+packages/
+*.nupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# --- Visual Studio ---
+.vs/
+*.rsuser
+*.sln.iml
+_ReSharper*/
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+*.bak
+
+# --- IIS Express ---
+.vscode/
+*.vspscc
+*.vssscc
+
+# --- Reportes Crystal (binarios grandes) ---
+# Los .rpt locales se incluyen; descomentar si son demasiado grandes:
+# PortalReportesCrystal/Reportes/**/*.rpt
+
+# --- Archivos de datos y logs ---
+PortalReportesCrystal/App_Data/*.jsonl
+PortalReportesCrystal/App_Data/*.log
+PortalReportesCrystal/App_Data/*.txt
+PortalReportesCrystal/App_Data/*.html
+*.log
+
+# --- Credenciales y configuracion local ---
+# NUNCA subir el Web.config real con credenciales.
+# Usar Web.config.example como plantilla.
+PortalReportesCrystal/Web.config
+!PortalReportesCrystal/Web.config.example
+
+# --- Archivos temporales ---
+*.tmp
+*.temp
+~$*
+Thumbs.db
+Desktop.ini
+.DS_Store
