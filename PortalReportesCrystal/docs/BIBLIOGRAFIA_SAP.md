@@ -24,9 +24,9 @@
 
 | Documento | Formato | Enlace directo |
 |---|---|---|
-| **SAP Crystal Reports, developer version for Microsoft Visual Studio — Developer Guide** | PDF | https://help.sap.com/docs/SAP_CRYSTAL_REPORTS_DEVELOPER_VS/e21c39c2f18b4cbca4dcb2a4cd8ffc71/59c98e88f43b47b19dfd7c02be3ce2fe.html |
+| **SAP Crystal Reports for Visual Studio — Developer Guide (SP21)** | PDF | https://help.sap.com/doc/305e804dfee640ac9aadeb4ac352f05c/SP21/en-US/crnet13_sp21_dg_en.pdf |
 | **Portal de documentación** (índice completo) | HTML | https://help.sap.com/docs/SAP_CRYSTAL_REPORTS_DEVELOPER_VS |
-| **API Reference — .NET Namespaces** | HTML | https://help.sap.com/doc/businessobject_product_guides_boexir4_en_xi4sp7_rpt_dg_dotnet_en_pdf/4.2.7/en-US/xi4sp7_rpt_dg_dotnet_en.pdf |
+| **API Reference — .NET Namespaces (BI 4.2 SP7)** | PDF | https://help.sap.com/doc/businessobject_product_guides_boexir4_en_xi4sp7_rpt_dg_dotnet_en_pdf/4.2.7/en-US/xi4sp7_rpt_dg_dotnet_en.pdf |
 | **Página oficial del producto** | HTML | https://www.crystalreports.com/crystal-reports-visual-studio/ |
 | **Descargas del runtime** (S-user) | ZIP | https://origin.softwaredownloads.sap.com/public/site/index.html |
 
@@ -46,6 +46,7 @@ Portal para consultar Notes: https://launchpad.support.sap.com/#/notes
 
 | Documento | Formato | Enlace directo |
 |---|---|---|
+| **Business Intelligence Platform RESTful Web Service Developer Guide** (BI 2025) | PDF | https://help.sap.com/doc/220244879d104f2e8e8b37e0fa0bdd2d/2025/en-US/sbo2025_bip_rest_ws_en.pdf |
 | **Business Intelligence Platform RESTful Web Service Developer Guide** (BI 4.3) | PDF | https://help.sap.com/doc/businessobject_product_guides_boexir4_en_sbo43_bip_rest_ws_en_pdf/4.3/en-US/sbo43_bip_rest_ws_en.pdf |
 | **Business Intelligence Platform RESTful Web Service Developer Guide** (BI 4.2) | PDF | https://help.sap.com/doc/businessobject_product_guides_boexir4_en_xi4sp7_bip_rest_ws_en_pdf/4.2.7/en-US/xi4sp7_bip_rest_ws_en.pdf |
 | **Portal de documentación BI Platform** | HTML | https://help.sap.com/docs/SAP_BUSINESSOBJECTS_BUSINESS_INTELLIGENCE_PLATFORM |
@@ -194,3 +195,4 @@ SAP reorganiza sus portales periódicamente. Si un PDF no responde:
 | Fecha | Cambio |
 |---|---|
 | 2026-08-27 | Versión inicial con enlaces directos a PDFs oficiales |
+| 2026-08-27 | Agregar PDF CR4VS SP21 y REST WS BI 2025 (enlaces confirmados por revisor) |
