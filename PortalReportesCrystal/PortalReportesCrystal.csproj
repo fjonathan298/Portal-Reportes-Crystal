@@ -93,7 +93,9 @@
     <Compile Include="Services\AuditoriaService.cs" />
     <Compile Include="Services\CacheParametros.cs" />
     <Compile Include="Services\EstadoReportes.cs" />
+    <Compile Include="Services\PermisosService.cs" />
     <Compile Include="Services\SapBoClient.cs" />
+    <Compile Include="Controllers\PermisosController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
@@ -121,6 +123,10 @@
     <Content Include="Database\audit_schema.sql" />
     <Content Include="Database\audit_agregacion_diaria.sql" />
     <Content Include="Database\audit_purge_job.sql" />
+    <Content Include="Database\audit_permisos_schema.sql" />
+    <Content Include="Views\Permisos\Index.cshtml" />
+    <Content Include="Views\Permisos\Rol.cshtml" />
+    <Content Include="Views\Permisos\Log.cshtml" />
     <Content Include="Database\LOV\README.md" />
     <Content Include="Database\LOV\LOV_Paises.sql" />
     <Content Include="Database\LOV\LOV_Monedas.sql" />

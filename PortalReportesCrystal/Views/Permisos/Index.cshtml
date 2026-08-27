@@ -1,0 +1,107 @@
+﻿@{
+    ViewBag.Title = "Permisos";
+    var roles = ViewBag.Roles as List<PortalReportesCrystal.Services.RolInfo>;
+    var log = ViewBag.LogReciente as List<PortalReportesCrystal.Services.PermisoLogInfo>;
+}
+
+<div class="cabecera-listado">
+    <h1>Administración de Permisos</h1>
+    <p class="subtitulo">Roles, asignaciones de reportes y usuarios</p>
+</div>
+
+@if (!string.IsNullOrEmpty(ViewBag.Mensaje as string))
+{
+    <div class="aviso" style="background:#FFF8E1;color:#7d5b00;border:1px solid #F0C36D;border-radius:4px;padding:12px;margin-bottom:16px;">
+        @ViewBag.Mensaje
+    </div>
+}
+else
+{
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+
+        <div class="card" style="background:var(--sr-blanco);border:1px solid var(--sr-borde);border-radius:4px;padding:14px;">
+            <h3 style="margin:0 0 12px 0;color:var(--sr-primario);">Roles</h3>
+
+            @if (roles != null && roles.Count > 0)
+            {
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead>
+                        <tr style="border-bottom:2px solid var(--sr-borde);text-align:left;">
+                            <th style="padding:4px 8px;">Nombre</th>
+                            <th style="padding:4px 8px;">Grupo AD</th>
+                            <th style="padding:4px 8px;">Estado</th>
+                            <th style="padding:4px 8px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var rol in roles)
+                        {
+                            <tr style="border-bottom:1px solid var(--sr-borde);">
+                                <td style="padding:4px 8px;">@rol.Nombre</td>
+                                <td style="padding:4px 8px;color:var(--sr-texto-sec);">@(rol.GrupoAD ?? "—")</td>
+                                <td style="padding:4px 8px;">@(rol.Activo ? "Activo" : "Inactivo")</td>
+                                <td style="padding:4px 8px;">
+                                    <a href="@Url.Action("Rol", new { id = rol.RolId })" style="color:var(--sr-primario);">Detalle</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p style="color:var(--sr-texto-sec);font-size:13px;">No hay roles configurados.</p>
+            }
+
+            <h4 style="margin:16px 0 8px 0;">Crear nuevo rol</h4>
+            <form method="post" action="@Url.Action("CrearRol")" style="display:grid;gap:8px;max-width:400px;">
+                @Html.AntiForgeryToken()
+                <input type="text" name="nombre" placeholder="Nombre del rol" required
+                       style="padding:6px 8px;border:1px solid var(--sr-borde);border-radius:3px;" />
+                <input type="text" name="descripcion" placeholder="Descripción (opcional)"
+                       style="padding:6px 8px;border:1px solid var(--sr-borde);border-radius:3px;" />
+                <input type="text" name="grupoAD" placeholder="Grupo AD (opcional, ej: SUPERREPUESTOS\Grupo)"
+                       style="padding:6px 8px;border:1px solid var(--sr-borde);border-radius:3px;" />
+                <button type="submit" style="padding:6px 12px;background:var(--sr-primario);color:white;border:none;border-radius:3px;cursor:pointer;">
+                    Crear rol
+                </button>
+            </form>
+        </div>
+
+        <div class="card" style="background:var(--sr-blanco);border:1px solid var(--sr-borde);border-radius:4px;padding:14px;">
+            <h3 style="margin:0 0 12px 0;color:var(--sr-primario);">Últimos cambios</h3>
+            @if (log != null && log.Count > 0)
+            {
+                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                    <thead>
+                        <tr style="border-bottom:2px solid var(--sr-borde);text-align:left;">
+                            <th style="padding:4px 6px;">Fecha</th>
+                            <th style="padding:4px 6px;">Acción</th>
+                            <th style="padding:4px 6px;">Usuario</th>
+                            <th style="padding:4px 6px;">Detalle</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entry in log)
+                        {
+                            <tr style="border-bottom:1px solid var(--sr-borde);">
+                                <td style="padding:4px 6px;white-space:nowrap;">@entry.FechaUtc.AddHours(-6).ToString("dd/MM HH:mm")</td>
+                                <td style="padding:4px 6px;">@entry.Accion</td>
+                                <td style="padding:4px 6px;">@entry.Usuario</td>
+                                <td style="padding:4px 6px;color:var(--sr-texto-sec);">@entry.Detalle</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p style="color:var(--sr-texto-sec);font-size:13px;">Sin cambios registrados.</p>
+            }
+            <p style="margin-top:12px;">
+                <a href="@Url.Action("Log")" style="color:var(--sr-primario);font-size:13px;">Ver historial completo</a>
+            </p>
+        </div>
+
+    </div>
+}
