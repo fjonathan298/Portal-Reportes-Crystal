@@ -4,6 +4,7 @@
     string categoria = (string)ViewBag.Categoria;
     string tipoDoc = (string)ViewBag.TipoDoc;
     string urlExterna = (string)ViewBag.UrlExterna ?? "";
+    string cuid = (string)ViewBag.Cuid ?? "";
     string tipoLegible = tipoDoc == "CrystalReport" ? "SAP BO Crystal Report" : "SAP BO Web Intelligence";
 }
 
@@ -16,11 +17,11 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
     }
     .sapbo-encabezado h2 { margin: 0; font-size: 18px; }
-    .sapbo-encabezado small { opacity: .8; }
-    .sapbo-encabezado .acciones a {
+    .sapbo-encabezado small { opacity: .85; }
+    .sapbo-encabezado a {
         color: var(--sr-blanco);
         border: 1px solid rgba(255,255,255,.4);
         padding: 4px 10px;
@@ -29,65 +30,92 @@
         font-size: 12px;
         text-decoration: none;
     }
-    .sapbo-encabezado .acciones a:hover { background: rgba(255,255,255,.12); }
 
-    .sapbo-launcher {
+    .layout-2col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+    @@media (max-width: 900px) { .layout-2col { grid-template-columns: 1fr; } }
+
+    .card {
         background: var(--sr-blanco);
         border: 1px solid var(--sr-borde);
-        border-radius: 8px;
-        padding: 40px 30px;
-        text-align: center;
-        box-shadow: 0 2px 6px rgba(0,0,0,.05);
-        max-width: 640px;
-        margin: 30px auto;
+        border-radius: 4px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.05);
     }
-    .sapbo-launcher .icono {
-        font-size: 56px;
-        color: var(--sr-primario);
-        margin-bottom: 12px;
-    }
-    .sapbo-launcher h3 {
-        margin: 0 0 6px 0;
-        color: var(--sr-primario);
-        font-size: 22px;
-    }
-    .sapbo-launcher .meta {
-        color: var(--sr-texto-sec);
-        font-size: 13px;
-        margin-bottom: 22px;
-    }
-    .sapbo-launcher .descripcion {
-        color: var(--sr-texto);
-        font-size: 14px;
-        line-height: 1.5;
-        max-width: 480px;
-        margin: 0 auto 26px auto;
-    }
-    .sapbo-launcher .btn-abrir {
+    .card h3 { margin: 0 0 12px 0; color: var(--sr-primario); font-size: 16px; }
+
+    .btn-abrir {
         display: inline-block;
         background: var(--sr-primario);
         color: var(--sr-blanco);
-        padding: 14px 32px;
+        padding: 12px 26px;
         border-radius: 4px;
         text-decoration: none;
         font-weight: 600;
-        font-size: 15px;
-        transition: background .15s;
+        font-size: 14px;
+        margin: 8px 0;
     }
-    .sapbo-launcher .btn-abrir:hover { background: var(--sr-primario-alt); }
-    .sapbo-launcher .btn-abrir .arrow { margin-left: 6px; }
-    .sapbo-launcher .aviso-auditoria {
-        margin-top: 22px;
-        padding: 10px 14px;
+    .btn-abrir:hover { background: var(--sr-primario-alt); }
+    .parametros-aplicados {
+        margin-top: 14px;
+        padding: 10px 12px;
         background: #F0F7FF;
         border-left: 3px solid var(--sr-primario);
-        color: var(--sr-texto-sec);
         font-size: 12px;
-        text-align: left;
-        max-width: 480px;
-        margin-left: auto;
-        margin-right: auto;
     }
+    .parametros-aplicados .kv {
+        display: inline-block;
+        background: #FFF;
+        padding: 2px 8px;
+        border-radius: 2px;
+        margin: 2px 3px 2px 0;
+        font-family: monospace;
+        font-size: 11px;
+    }
+
+    .timeline-mini {
+        max-height: 380px;
+        overflow-y: auto;
+        border-top: 1px solid var(--sr-borde);
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+    .timeline-mini .item {
+        padding: 8px 10px;
+        border-bottom: 1px solid #F0F0F0;
+        font-size: 12px;
+    }
+    .timeline-mini .item.nuevo { background: #FFF9DB; animation: destacar 2.5s; }
+    @@keyframes destacar { from { background: #FFEB8A; } to { background: transparent; } }
+    .timeline-mini .item .hora { color: var(--sr-texto-sec); font-family: monospace; font-size: 10px; }
+    .timeline-mini .item .tipo {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 2px;
+        font-size: 10px;
+        font-weight: 600;
+        margin-left: 4px;
+    }
+    .timeline-mini .item .tipo-VER_REPORTE     { background: #E3F2FD; color: #1565C0; }
+    .timeline-mini .item .tipo-DESCARGA_IFRAME { background: #FCE4EC; color: #AD1457; }
+    .timeline-mini .item .tipo-EXPORTAR_PDF    { background: #FFF3E0; color: #E65100; }
+    .timeline-mini .item .tipo-EXPORTAR_EXCEL  { background: #E8F5E9; color: #2E7D32; }
+    .timeline-mini .item .tipo-ERROR_GENERACION,
+    .timeline-mini .item .tipo-ERROR_ACCESO    { background: #FFEBEE; color: #C62828; }
+    .timeline-mini .item .usuario { color: var(--sr-texto); font-weight: 500; }
+    .timeline-mini .item .params { color: var(--sr-texto-sec); font-family: monospace; font-size: 10px; }
+    .estado-live {
+        font-size: 11px; color: var(--sr-texto-sec); float: right;
+    }
+    .estado-live .dot {
+        display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+        background: #7DDA84; margin-right: 4px;
+        animation: parpadeo 1.4s infinite;
+    }
+    @@keyframes parpadeo { 50% { opacity: .3; } }
 </style>
 
 <div class="sapbo-encabezado">
@@ -98,38 +126,146 @@
             @tipoLegible
         </small>
     </div>
-    <div class="acciones">
+    <div>
         <a href="@Url.Action("Index", "Home")">&larr; Volver al listado</a>
     </div>
 </div>
 
-<div class="sapbo-launcher">
-    <div class="icono">&#128196;</div>
-    <h3>@nombre</h3>
-    <div class="meta">
-        @if (!string.IsNullOrEmpty(categoria)) { <text>@categoria &nbsp;&middot;&nbsp;</text> }
-        @tipoLegible
+<div class="layout-2col">
+
+    <div class="card">
+        <h3>Abrir reporte</h3>
+        <p style="color:var(--sr-texto-sec);font-size:13px;">
+            El visor de SAP BusinessObjects se abre en una pesta&ntilde;a nueva.
+            El servidor CMC no permite embed en iframe por su pol&iacute;tica de seguridad
+            (<code>X-Frame-Options</code>), por lo que la ejecuci&oacute;n sucede fuera del
+            portal. La <strong>auditor&iacute;a de la apertura y los par&aacute;metros</strong>
+            queda registrada aqu&iacute; en el mismo instante.
+        </p>
+        @if (!string.IsNullOrEmpty(urlExterna))
+        {
+            <a href="@Url.Action("AbrirExterno", "Sapbo", new { url = urlExterna, nombre = nombre, categoria = categoria, tipoDoc = tipoDoc, cuid = cuid })"
+               target="_blank" rel="noopener" class="btn-abrir" id="btn-abrir">
+                Abrir en SAP BO &#8599;
+            </a>
+        }
+        else
+        {
+            <em style="color:var(--sr-texto-sec);">No hay URL disponible.</em>
+        }
+
+        <div class="parametros-aplicados" id="params-aplicados" style="display:none;">
+            <strong>Filtros enviados al reporte:</strong>
+            <div id="params-lista" style="margin-top:6px;"></div>
+        </div>
     </div>
-    <div class="descripcion">
-        Este reporte se ejecuta en el visor propio de SAP BusinessObjects.
-        Se abrir&aacute; en una pesta&ntilde;a nueva del navegador para que
-        el visor maneje su propia sesi&oacute;n con el servidor CMC.
+
+    <div class="card">
+        <h3>
+            Interacciones en vivo
+            <span class="estado-live" id="estado-live"><span class="dot"></span>en vivo</span>
+        </h3>
+        <p style="color:var(--sr-texto-sec);font-size:12px;margin:0;">
+            &Uacute;ltimas interacciones registradas para <strong>@nombre</strong>.
+            Auto-refresh cada 3 segundos.
+        </p>
+        <div class="timeline-mini" id="timeline">
+            <div style="padding:20px;text-align:center;color:var(--sr-texto-sec);">Cargando...</div>
+        </div>
+        <p style="text-align:right;margin:10px 0 0 0;">
+            <a href="@Url.Action("Interacciones", "Auditoria")" style="font-size:12px;">Ver timeline global &rarr;</a>
+        </p>
     </div>
-    @if (!string.IsNullOrEmpty(urlExterna))
-    {
-        <a href="@Url.Action("AbrirExterno", "Sapbo", new { url = urlExterna, nombre = nombre, categoria = categoria, tipoDoc = tipoDoc, cuid = ViewBag.Cuid })"
-           target="_blank" rel="noopener" class="btn-abrir">
-            Abrir reporte en SAP BO <span class="arrow">&#8599;</span>
-        </a>
-    }
-    else
-    {
-        <em style="color:var(--sr-texto-sec);">No hay URL disponible para este reporte.</em>
-    }
-    <div class="aviso-auditoria">
-        <strong>Auditor&iacute;a:</strong> el acceso a este reporte por parte de
-        <em>@User.Identity.Name</em> qued&oacute; registrado en el sistema con
-        fecha y hora actuales, incluyendo los par&aacute;metros aplicados (almac&eacute;n,
-        pa&iacute;s, fechas). Esta bit&aacute;cora es consultable en el panel de auditor&iacute;a.
-    </div>
+
 </div>
+
+<script>
+(function() {
+    var cuid = @Html.Raw(Json.Encode(cuid));
+    var ultimoId = 0;
+    var timeline = document.getElementById('timeline');
+    var estado   = document.getElementById('estado-live');
+
+    // Mostrar los ls* que vienen en la URL como "filtros aplicados"
+    try {
+        var qs = new URLSearchParams(window.location.search);
+        var params = [];
+        qs.forEach(function(v, k) {
+            if (k.toLowerCase().indexOf('ls') === 0) {
+                var nombre = k.length > 3 ? k.substring(3) : k.substring(2);
+                params.push({ n: nombre.toUpperCase(), v: v });
+            }
+        });
+        if (params.length > 0) {
+            document.getElementById('params-aplicados').style.display = 'block';
+            var html = '';
+            params.forEach(function(p) {
+                html += '<span class="kv">' + p.n + ' = ' + p.v + '</span>';
+            });
+            document.getElementById('params-lista').innerHTML = html;
+        }
+    } catch(e) { /* URLSearchParams no soportado en IE viejo, ignorar */ }
+
+    function esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s).replace(/[&<>"']/g, function(c) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+        });
+    }
+    function formatHora(f) {
+        if (!f) return '';
+        var d = new Date(f);
+        if (isNaN(d.getTime())) return esc(f);
+        var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+        return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+    }
+
+    function cargar() {
+        var url = '@Url.Action("InteraccionesSapbo", "Auditoria")?raiz=sapbo&limite=20';
+        if (cuid) url += '&cuid=' + encodeURIComponent(cuid);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.onload = function() {
+            if (xhr.status !== 200) {
+                estado.innerHTML = '<span style="color:#C62828">HTTP ' + xhr.status + '</span>';
+                return;
+            }
+            try {
+                var d = JSON.parse(xhr.responseText);
+                if (d.error) {
+                    estado.innerHTML = '<span style="color:#C62828">' + esc(d.error) + '</span>';
+                    return;
+                }
+                var eventos = d.eventos || [];
+                if (eventos.length === 0) {
+                    timeline.innerHTML = '<div style="padding:20px;text-align:center;color:var(--sr-texto-sec);">Sin eventos a&uacute;n para este reporte.</div>';
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < eventos.length; i++) {
+                    var e = eventos[i];
+                    var esNuevo = ultimoId > 0 && e.EventoId > ultimoId;
+                    var tipo = e.Evento || '';
+                    var params = e.Parametros || '';
+                    var mensaje = tipo.indexOf('ERROR') === 0 && e.MensajeError ? esc(e.MensajeError) : esc(params);
+                    html += '<div class="item' + (esNuevo ? ' nuevo' : '') + '">' +
+                        '<span class="hora">' + formatHora(e.FechaLocal) + '</span>' +
+                        '<span class="tipo tipo-' + esc(tipo) + '">' + esc(tipo) + '</span> ' +
+                        '<span class="usuario">' + esc(e.Usuario || '') + '</span>' +
+                        (mensaje ? '<div class="params">' + mensaje + '</div>' : '') +
+                        '</div>';
+                }
+                timeline.innerHTML = html;
+                ultimoId = d.ultimoEventoId || (eventos[0] && eventos[0].EventoId) || 0;
+                estado.innerHTML = '<span class="dot"></span>' + eventos.length + ' eventos';
+            } catch(e) { estado.innerHTML = '<span style="color:#C62828">Parse error</span>'; }
+        };
+        xhr.onerror = function() { estado.innerHTML = '<span style="color:#C62828">Sin conexion</span>'; };
+        xhr.send();
+    }
+
+    cargar();
+    setInterval(cargar, 3000);
+})();
+</script>

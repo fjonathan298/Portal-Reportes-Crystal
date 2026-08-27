@@ -1,0 +1,243 @@
+﻿@{
+    ViewBag.Title = "Interacciones en vivo";
+}
+
+<div class="cabecera-listado">
+    <h1>Interacciones de reportes — en vivo</h1>
+    <p class="subtitulo">Timeline de eventos capturados en <code>audit.Evento</code>. Auto-refresh cada 3 segundos.</p>
+</div>
+
+<style>
+    .filtros {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 14px;
+        padding: 10px 14px;
+        background: var(--sr-blanco);
+        border: 1px solid var(--sr-borde);
+        border-radius: 4px;
+    }
+    .filtros label { font-size: 12px; color: var(--sr-texto-sec); }
+    .filtros select, .filtros input {
+        padding: 4px 8px;
+        border: 1px solid var(--sr-borde);
+        border-radius: 3px;
+        font-size: 13px;
+    }
+    .filtros .btn-toggle {
+        background: var(--sr-primario);
+        color: var(--sr-blanco);
+        border: none;
+        padding: 6px 14px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    .filtros .btn-toggle.pausado { background: #999; }
+    .filtros .estado {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--sr-texto-sec);
+    }
+    .filtros .estado .dot {
+        display: inline-block;
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: #7DDA84;
+        margin-right: 4px;
+        animation: parpadeo 1.4s infinite;
+    }
+    @@keyframes parpadeo { 50% { opacity: .3; } }
+
+    .timeline {
+        background: var(--sr-blanco);
+        border: 1px solid var(--sr-borde);
+        border-radius: 4px;
+        max-height: 640px;
+        overflow-y: auto;
+    }
+    .evento {
+        display: grid;
+        grid-template-columns: 130px 90px 180px 220px 1fr;
+        gap: 10px;
+        padding: 10px 14px;
+        border-bottom: 1px solid #F0F0F0;
+        font-size: 13px;
+        align-items: start;
+    }
+    .evento.nuevo { background: #FFF9DB; animation: destacar 2.5s; }
+    @@keyframes destacar { from { background: #FFEB8A; } to { background: transparent; } }
+    .evento .hora { color: var(--sr-texto-sec); font-family: monospace; font-size: 11px; }
+    .evento .tipo {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: 600;
+        text-align: center;
+        white-space: nowrap;
+    }
+    .tipo-VER_REPORTE      { background: #E3F2FD; color: #1565C0; }
+    .tipo-VER_LISTADO      { background: #F1F8E9; color: #558B2F; }
+    .tipo-EXPORTAR_PDF     { background: #FFF3E0; color: #E65100; }
+    .tipo-EXPORTAR_EXCEL   { background: #E8F5E9; color: #2E7D32; }
+    .tipo-EXPORTAR_EXCELDATA { background: #E8F5E9; color: #2E7D32; }
+    .tipo-DESCARGA_IFRAME  { background: #FCE4EC; color: #AD1457; }
+    .tipo-ERROR_GENERACION { background: #FFEBEE; color: #C62828; }
+    .tipo-ERROR_ACCESO     { background: #FFEBEE; color: #C62828; }
+    .tipo-LOGIN            { background: #E0F7FA; color: #00838F; }
+    .tipo-PREVIEW          { background: #EDE7F6; color: #4527A0; }
+    .tipo-ACCESO_DASHBOARD { background: #ECEFF1; color: #37474F; }
+    .tipo-HEARTBEAT        { background: #F5F5F5; color: #757575; }
+    .evento .usuario { font-weight: 500; }
+    .evento .reporte { color: var(--sr-texto); }
+    .evento .reporte small { color: var(--sr-texto-sec); font-size: 11px; }
+    .evento .params { font-family: monospace; font-size: 11px; color: var(--sr-texto-sec); word-break: break-all; }
+    .evento .params .kv {
+        display: inline-block;
+        background: #F0F0F0;
+        padding: 1px 6px;
+        border-radius: 2px;
+        margin: 1px 3px 1px 0;
+    }
+    .evento.error .params { color: #C62828; }
+    .vacio {
+        padding: 40px;
+        text-align: center;
+        color: var(--sr-texto-sec);
+    }
+</style>
+
+<div class="filtros">
+    <label>Origen:
+        <select id="filtro-raiz">
+            <option value="">Todos</option>
+            <option value="sapbo" selected>SAP BO</option>
+            <option value="proyecto">Local (proyecto)</option>
+        </select>
+    </label>
+    <label>Reporte (CUID):
+        <input type="text" id="filtro-cuid" placeholder="opcional" size="18" />
+    </label>
+    <button id="btn-refresh" class="btn-toggle">Auto-refresh ON</button>
+    <div class="estado" id="estado"><span class="dot"></span>Conectado</div>
+</div>
+
+<div class="timeline" id="timeline">
+    <div class="vacio">Cargando eventos...</div>
+</div>
+
+<script>
+(function() {
+    var ultimoId = 0;
+    var activo = true;
+    var intervalo = null;
+    var timeline = document.getElementById('timeline');
+    var estado   = document.getElementById('estado');
+    var btn      = document.getElementById('btn-refresh');
+    var filRaiz  = document.getElementById('filtro-raiz');
+    var filCuid  = document.getElementById('filtro-cuid');
+
+    function esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s).replace(/[&<>"']/g, function(c) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+        });
+    }
+
+    function formatFecha(f) {
+        if (!f) return '';
+        var d = new Date(f);
+        if (isNaN(d.getTime())) return esc(f);
+        var pad = function(n) { return (n < 10 ? '0' : '') + n; };
+        return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+    }
+
+    function formatParams(p) {
+        if (!p) return '';
+        return p.split('|').map(function(kv) {
+            var t = kv.trim();
+            if (!t) return '';
+            return '<span class="kv">' + esc(t) + '</span>';
+        }).join('');
+    }
+
+    function renderEvento(e, esNuevo) {
+        var tipo = e.Evento || '';
+        var reporte = e.NombreReporte || e.PathReporte || '';
+        var carpeta = e.CarpetaReporte || '';
+        var extra = '';
+        if (e.Formato) extra += ' formato=' + e.Formato;
+        if (e.DuracionMs !== null && e.DuracionMs !== undefined) extra += ' ' + e.DuracionMs + 'ms';
+        if (e.HttpStatus)  extra += ' HTTP ' + e.HttpStatus;
+        var esError = tipo.indexOf('ERROR') === 0;
+        var mensajeError = esError && e.MensajeError ? esc(e.MensajeError) : '';
+        return '<div class="evento' + (esNuevo ? ' nuevo' : '') + (esError ? ' error' : '') + '" data-id="' + e.EventoId + '">' +
+            '<div class="hora">' + formatFecha(e.FechaLocal) + '<br><small>#' + e.EventoId + '</small></div>' +
+            '<div><span class="tipo tipo-' + esc(tipo) + '">' + esc(tipo) + '</span></div>' +
+            '<div class="usuario">' + esc(e.Usuario || '') + '<br><small style="color:#999">' + esc(e.IpCliente || '') + '</small></div>' +
+            '<div class="reporte">' + esc(reporte) + (carpeta ? '<br><small>' + esc(carpeta) + '</small>' : '') + '</div>' +
+            '<div class="params">' + (mensajeError || formatParams(e.Parametros) + '<small>' + esc(extra) + '</small>') + '</div>' +
+            '</div>';
+    }
+
+    function cargar() {
+        if (!activo) return;
+        var qs = '?desdeEventoId=0&limite=50';
+        if (filRaiz.value) qs += '&raiz=' + encodeURIComponent(filRaiz.value);
+        if (filCuid.value) qs += '&cuid=' + encodeURIComponent(filCuid.value);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '@Url.Action("InteraccionesSapbo", "Auditoria")' + qs, true);
+        xhr.onload = function() {
+            if (xhr.status !== 200) {
+                estado.innerHTML = '<span style="color:#C62828">HTTP ' + xhr.status + '</span>';
+                return;
+            }
+            try {
+                var d = JSON.parse(xhr.responseText);
+                if (d.error) {
+                    estado.innerHTML = '<span style="color:#C62828">' + esc(d.error) + '</span>';
+                    return;
+                }
+                var eventos = d.eventos || [];
+                if (eventos.length === 0) {
+                    timeline.innerHTML = '<div class="vacio">Sin eventos que mostrar con los filtros actuales.</div>';
+                    ultimoId = 0;
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < eventos.length; i++) {
+                    var esNuevo = ultimoId > 0 && eventos[i].EventoId > ultimoId;
+                    html += renderEvento(eventos[i], esNuevo);
+                }
+                timeline.innerHTML = html;
+                ultimoId = d.ultimoEventoId || eventos[0].EventoId;
+                estado.innerHTML = '<span class="dot"></span>' + eventos.length + ' eventos';
+            } catch(e) {
+                estado.innerHTML = '<span style="color:#C62828">Parse: ' + esc(e.message) + '</span>';
+            }
+        };
+        xhr.onerror = function() {
+            estado.innerHTML = '<span style="color:#C62828">Sin conexion</span>';
+        };
+        xhr.send();
+    }
+
+    btn.addEventListener('click', function() {
+        activo = !activo;
+        btn.textContent = 'Auto-refresh ' + (activo ? 'ON' : 'OFF');
+        btn.classList.toggle('pausado', !activo);
+        if (activo) cargar();
+    });
+    filRaiz.addEventListener('change', function() { ultimoId = 0; cargar(); });
+    filCuid.addEventListener('input', function() {
+        clearTimeout(window._t);
+        window._t = setTimeout(function() { ultimoId = 0; cargar(); }, 400);
+    });
+
+    cargar();
+    intervalo = setInterval(cargar, 3000);
+})();
+</script>

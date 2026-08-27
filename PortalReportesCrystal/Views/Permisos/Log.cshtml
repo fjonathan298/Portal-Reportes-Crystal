@@ -1,0 +1,42 @@
+﻿@{
+    ViewBag.Title = "Historial de Permisos";
+    var log = ViewBag.Log as List<PortalReportesCrystal.Services.PermisoLogInfo>;
+}
+
+<div class="cabecera-listado">
+    <h1>Historial de cambios de permisos</h1>
+    <p class="subtitulo">Últimos 100 registros · fuente: <code>audit.PermisoLog</code></p>
+</div>
+
+@if (log != null && log.Count > 0)
+{
+    <table style="width:100%;border-collapse:collapse;font-size:13px;background:var(--sr-blanco);border:1px solid var(--sr-borde);border-radius:4px;">
+        <thead>
+            <tr style="border-bottom:2px solid var(--sr-borde);text-align:left;">
+                <th style="padding:6px 8px;">Fecha (local)</th>
+                <th style="padding:6px 8px;">Acción</th>
+                <th style="padding:6px 8px;">Ejecutado por</th>
+                <th style="padding:6px 8px;">Usuario afectado</th>
+                <th style="padding:6px 8px;">Detalle</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in log)
+            {
+                <tr style="border-bottom:1px solid var(--sr-borde);">
+                    <td style="padding:4px 8px;white-space:nowrap;">@entry.FechaUtc.AddHours(-6).ToString("yyyy-MM-dd HH:mm")</td>
+                    <td style="padding:4px 8px;">@entry.Accion</td>
+                    <td style="padding:4px 8px;">@entry.Usuario</td>
+                    <td style="padding:4px 8px;">@(entry.UsuarioAfectado ?? "—")</td>
+                    <td style="padding:4px 8px;color:var(--sr-texto-sec);">@entry.Detalle</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p style="color:var(--sr-texto-sec);">Sin registros.</p>
+}
+
+<p style="margin-top:16px;"><a href="@Url.Action("Index")" style="color:var(--sr-primario);">← Volver a permisos</a></p>

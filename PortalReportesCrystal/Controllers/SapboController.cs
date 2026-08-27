@@ -62,6 +62,19 @@ namespace PortalReportesCrystal.Controllers
             if (string.IsNullOrWhiteSpace(cuid) && string.IsNullOrWhiteSpace(url))
                 return HttpNotFound();
 
+            if (PermisosService.Habilitado)
+            {
+                var ri = new Models.ReporteInfo
+                {
+                    Nombre = nombre,
+                    Categoria = categoria,
+                    Tipo = Models.TipoReporte.WebI,
+                    RaizId = "sapbo"
+                };
+                if (!PermisosService.TieneAcceso(HttpContext, ri))
+                    return new HttpStatusCodeResult(403, "No tiene permiso para acceder a este reporte.");
+            }
+
             RegistrarVerReporte(cuid, nombre, categoria, tipoDoc, url);
 
             // Construimos la URL objetivo de SAP BO (normalizada para embed)

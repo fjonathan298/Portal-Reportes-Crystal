@@ -45,6 +45,7 @@ namespace PortalReportesCrystal
             EstadoReportes.Inicializar(appData);
             SapBoClient.Inicializar(appData);
             AuditoriaService.Inicializar(appData);
+            PermisosService.Inicializar();
             CacheParametros.IniciarEscaneoBackground(ObtenerRaicesDeReportes());
         }
 

@@ -1,0 +1,143 @@
+﻿@{
+    var rol = ViewBag.Rol as PortalReportesCrystal.Services.RolInfo;
+    ViewBag.Title = "Rol: " + (rol != null ? rol.Nombre : "");
+    var asignaciones = ViewBag.Asignaciones as List<PortalReportesCrystal.Services.RolReporteInfo>;
+    var usuarios = ViewBag.Usuarios as List<PortalReportesCrystal.Services.UsuarioRolInfo>;
+}
+
+<div class="cabecera-listado">
+    <h1>Rol: @(rol != null ? rol.Nombre : "")</h1>
+    <p class="subtitulo">
+        @(rol != null && !string.IsNullOrEmpty(rol.Descripcion) ? rol.Descripcion : "Sin descripción")
+        @if (rol != null && !string.IsNullOrEmpty(rol.GrupoAD))
+        {
+            <text> · AD: <code>@rol.GrupoAD</code></text>
+        }
+    </p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+
+    <div class="card" style="background:var(--sr-blanco);border:1px solid var(--sr-borde);border-radius:4px;padding:14px;">
+        <h3 style="margin:0 0 12px 0;color:var(--sr-primario);">Reportes asignados</h3>
+
+        @if (asignaciones != null && asignaciones.Count > 0)
+        {
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--sr-borde);text-align:left;">
+                        <th style="padding:4px 6px;">Tipo</th>
+                        <th style="padding:4px 6px;">Valor</th>
+                        <th style="padding:4px 6px;">Ver</th>
+                        <th style="padding:4px 6px;">Exportar</th>
+                        <th style="padding:4px 6px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in asignaciones)
+                    {
+                        <tr style="border-bottom:1px solid var(--sr-borde);@(a.Activo ? "" : "opacity:0.4;")">
+                            <td style="padding:4px 6px;">@a.TipoAcceso</td>
+                            <td style="padding:4px 6px;">@a.ValorAcceso</td>
+                            <td style="padding:4px 6px;">@(a.PuedeVer ? "Si" : "No")</td>
+                            <td style="padding:4px 6px;">@(a.PuedeExportar ? "Si" : "No")</td>
+                            <td style="padding:4px 6px;">
+                                @if (a.Activo)
+                                {
+                                    using (Html.BeginForm("RevocarReporte", "Permisos", FormMethod.Post, new { style = "display:inline;" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="rolReporteId" value="@a.RolReporteId" />
+                                        <input type="hidden" name="rolId" value="@rol.RolId" />
+                                        <button type="submit" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:12px;">Revocar</button>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p style="color:var(--sr-texto-sec);font-size:13px;">Sin reportes asignados.</p>
+        }
+
+        <h4 style="margin:16px 0 8px 0;">Agregar asignación</h4>
+        <form method="post" action="@Url.Action("AsignarReporte")" style="display:grid;gap:8px;max-width:400px;">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="rolId" value="@rol.RolId" />
+            <select name="tipoAcceso" style="padding:6px 8px;border:1px solid var(--sr-borde);border-radius:3px;">
+                <option value="RAIZ">RAIZ (todos los reportes de una raíz)</option>
+                <option value="CATEGORIA">CATEGORIA (una carpeta/categoría)</option>
+                <option value="REPORTE">REPORTE (un reporte específico)</option>
+            </select>
+            <input type="text" name="valorAcceso" placeholder="Valor (ej: crystalxi, CREDITOS, reporte.rpt)" required
+                   style="padding:6px 8px;border:1px solid var(--sr-borde);border-radius:3px;" />
+            <label style="font-size:13px;">
+                <input type="checkbox" name="puedeVer" value="true" checked /> Puede ver
+            </label>
+            <label style="font-size:13px;">
+                <input type="checkbox" name="puedeExportar" value="true" /> Puede exportar
+            </label>
+            <button type="submit" style="padding:6px 12px;background:var(--sr-primario);color:white;border:none;border-radius:3px;cursor:pointer;">
+                Asignar
+            </button>
+        </form>
+    </div>
+
+    <div class="card" style="background:var(--sr-blanco);border:1px solid var(--sr-borde);border-radius:4px;padding:14px;">
+        <h3 style="margin:0 0 12px 0;color:var(--sr-primario);">Usuarios asignados</h3>
+
+        @if (usuarios != null && usuarios.Count > 0)
+        {
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--sr-borde);text-align:left;">
+                        <th style="padding:4px 8px;">Usuario</th>
+                        <th style="padding:4px 8px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in usuarios)
+                    {
+                        <tr style="border-bottom:1px solid var(--sr-borde);">
+                            <td style="padding:4px 8px;">@u.Usuario</td>
+                            <td style="padding:4px 8px;">
+                                @using (Html.BeginForm("RemoverUsuario", "Permisos", FormMethod.Post, new { style = "display:inline;" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="usuarioRolId" value="@u.UsuarioRolId" />
+                                    <input type="hidden" name="rolId" value="@rol.RolId" />
+                                    <button type="submit" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:12px;">Remover</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p style="color:var(--sr-texto-sec);font-size:13px;">Sin usuarios asignados directamente.</p>
+            @if (rol != null && !string.IsNullOrEmpty(rol.GrupoAD))
+            {
+                <p style="font-size:13px;">Los miembros del grupo AD <code>@rol.GrupoAD</code> tienen acceso automático.</p>
+            }
+        }
+
+        <h4 style="margin:16px 0 8px 0;">Agregar usuario</h4>
+        <form method="post" action="@Url.Action("AsignarUsuario")" style="display:grid;gap:8px;max-width:400px;">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="rolId" value="@rol.RolId" />
+            <input type="text" name="usuario" placeholder="DOMINIO\usuario" required
+                   style="padding:6px 8px;border:1px solid var(--sr-borde);border-radius:3px;" />
+            <button type="submit" style="padding:6px 12px;background:var(--sr-primario);color:white;border:none;border-radius:3px;cursor:pointer;">
+                Asignar usuario
+            </button>
+        </form>
+    </div>
+
+</div>
+
+<p><a href="@Url.Action("Index")" style="color:var(--sr-primario);">← Volver a la lista de roles</a></p>

@@ -2262,6 +2262,106 @@ Si el servidor SAP BO XI 3.1 rechaza el embed en producción, el `SapboControlle
 
 `Sapbo/TestIframe` — herramienta admin. Carga una URL de prueba en iframe y reporta si el servidor SAP BO permite embed directo o requiere proxy.
 
+### Tres niveles de auditoría (Portal SIG, 20-ago-2026)
+
+La reunión del Portal SIG definió tres niveles de auditoría requeridos:
+
+| Nivel | Descripción | Estado |
+|-------|-------------|--------|
+| **1. Auditoría de Permisos** | Registro de usuarios autorizados, asignaciones de reportes y roles | Nuevo desarrollo (ver abajo) |
+| **2. Auditoría de Accesos** | Usuario que accedió, fecha/hora, reporte consultado | Implementado (tablas `audit.Sesion` + `audit.Evento`) |
+| **3. Auditoría de Filtros** | Parámetros utilizados y filtros aplicados por el usuario | Implementado (tabla `audit.EventoParametro`) |
+
+**Nivel 1 — Auditoría de Permisos** requiere 4 tablas adicionales en el esquema `audit`:
+
+- `audit.Rol` — roles lógicos del portal, opcionalmente vinculados a grupos AD.
+- `audit.RolReporte` — asignación rol→reporte por raíz, categoría o reporte individual.
+- `audit.UsuarioRol` — asignación usuario→rol (con soft-delete para trazabilidad).
+- `audit.PermisoLog` — historial de todos los cambios de permisos (quién, cuándo, qué).
+
+DDL: `Database/audit_permisos_schema.sql`. Se activa con `Permisos:Habilitado=true` en `Web.config`. Mientras está en `false`, el portal funciona en modo abierto (cualquier usuario autenticado ve todos los reportes).
+
+**Niveles 2 y 3** se activan ejecutando `Database/audit_schema.sql` en Perseo y cambiando `Audit:Habilitado=true` en `Web.config`. No requieren código adicional.
+
+### Control de acceso a los módulos administrativos
+
+Los módulos administrativos del portal (`/Auditoria/Dashboard`, `/Auditoria/Interacciones`, `/Permisos`) están protegidos por una lista de administradores configurable en tres capas evaluadas en orden:
+
+| Clave `Web.config` | Propósito | Valor recomendado |
+|---|---|---|
+| `Audit:BypassAdminEnDev` | Solo desarrollo. Si es `true` **cualquier** usuario autenticado ve todos los módulos administrativos. Debe volverse a `false` antes de producción. | `false` |
+| `Audit:UsuariosAdmin` | Lista de usuarios AD individuales (separados por `;`). Complementa a `Audit:GruposAdmin` para casos donde aún no exista el grupo formal. | `SUPERREPUESTOS\usuario1;SUPERREPUESTOS\usuario2` |
+| `Audit:GruposAdmin` | Lista de grupos AD (separados por `;`). Preferido en producción para no depender de cuentas individuales. | `SUPERREPUESTOS\Portal_Audit_Readers` |
+
+Un usuario tiene acceso si cumple **cualquiera** de las tres condiciones. Los helpers `EsAdminAuditoria()` (en `AuditoriaController`) y `EsAdmin()` (en `PermisosController`) implementan la evaluación en cascada, y `Views/Shared/_Layout.cshtml` usa la misma lógica para mostrar u ocultar los enlaces del menú superior.
+
+### Interacciones en vivo (timeline)
+
+Página `/Auditoria/Interacciones` — enlace **"En vivo"** en la barra superior del portal. Muestra en tiempo real (auto-refresh cada 3 segundos) la lista de últimos eventos con:
+
+- **Hora local**, tipo de evento (color por categoría), usuario e IP, nombre del reporte, filtros aplicados como chips (`ALMACEN=06`, `PAIS=SV`, `FECHA=20260827`), duración, HTTP status y errores.
+- **Filtros**: origen (Todos / SAP BO / Local), CUID de reporte específico, botón para pausar el auto-refresh.
+- **Nuevos eventos** se destacan con fondo amarillo por 2.5 s.
+
+Consume el endpoint `GET /Auditoria/InteraccionesSapbo?desdeEventoId=N&raiz=...&cuid=...&limite=...` que devuelve JSON con los eventos y sus parámetros asociados. Protegido con el mismo helper que el dashboard.
+
+### Auditoría de reportes SAP BO — modelo actual
+
+El servidor SAP BO 4.x devuelve la cabecera `X-Frame-Options: DENY`, por lo que **el visor no puede embeberse en `<iframe>` desde el portal**. Se optó por no forzar la restricción (mantiene el aislamiento de sesiones del CMC intacto). La vista `Sapbo/Ver` implementa el patrón "**abrir en pestaña nueva + timeline de auditoría embebida en el portal**":
+
+- **Columna izquierda**: botón "Abrir en SAP BO" (dispara `Sapbo/AbrirExterno` que registra `DESCARGA_IFRAME` con `APERTURA_EXTERNA` en `MensajeError` y redirige al CMC). Chip con los filtros que se están enviando al reporte (parseados desde la URL `ls*`).
+- **Columna derecha**: timeline mini con las últimas 20 interacciones del reporte actual (filtrada por CUID). Se refresca sola cada 3 segundos.
+
+**Lo que sí se captura** (a nivel del portal):
+- ✅ Apertura del reporte y timestamp
+- ✅ Todos los parámetros `ls*` de la URL OpenDocument (Almacén, País, Fechas, Producto, etc.)
+- ✅ Clic para abrir en pestaña nueva
+- ✅ Usuario, IP, servidor SAP BO destino
+
+**Lo que no se captura** (por diseño — sucede dentro del visor CMC, cross-origin):
+- ❌ Cambios de filtros que el usuario haga **dentro** del visor SAP BO
+- ❌ Descargas de PDF/Excel disparadas desde el visor SAP BO
+
+Capturar los eventos internos del visor requeriría intervenir el CMC (agregar hooks JavaScript en InfoView/BILaunchPad) — desarrollo separado, invasivo, con impacto en soporte del vendor. No está en el alcance actual.
+
+### Endpoints del módulo de auditoría
+
+| Ruta | Método | Protección | Descripción |
+|---|---|---|---|
+| `/Auditoria/Dashboard` | GET | Admin | Vista con 6 tarjetas de métricas |
+| `/Auditoria/DashboardData` | GET | Admin | JSON con métricas del dashboard |
+| `/Auditoria/Interacciones` | GET | Admin | Vista timeline en vivo |
+| `/Auditoria/InteraccionesSapbo` | GET | Admin | JSON con últimos eventos filtrables |
+| `/Auditoria/RegistrarInteraccion` | POST | Authenticated | AJAX del cliente (interacciones desde iframe) |
+| `/Auditoria/RegistrarDiagnosticoIframe` | POST | Authenticated | AJAX del cliente (test de embed) |
+| `/Sapbo/Ver` | GET | Authenticated | Wrapper con timeline embebida + botón externo |
+| `/Sapbo/AbrirExterno` | GET | Authenticated | Registra `APERTURA_EXTERNA` y redirige a CMC |
+| `/Sapbo/TestIframe` | GET | Authenticated | Diagnóstico admin de X-Frame-Options |
+
+### Configuración local de credenciales
+
+Las credenciales de SAP BusinessObjects (`SapBo:Usuario`, `SapBo:Password`) **NO se committean al repositorio**. En `Web.config` aparecen como placeholders `***CONFIGURAR_LOCAL***`. Cada desarrollador o servidor debe reemplazarlos localmente antes de compilar.
+
+**Procedimiento**:
+
+1. Solicitar las credenciales al administrador de SAP BO (usuario dedicado con permisos mínimos de lectura sobre el CMC).
+2. Editar el `Web.config` local reemplazando los placeholders:
+   ```xml
+   <add key="SapBo:Usuario" value="<usuario_real>" />
+   <add key="SapBo:Password" value="<password_real>" />
+   ```
+3. **No guardar** ese `Web.config` con las credenciales reales en Git. Antes de un commit, revertir a placeholders o usar `git update-index --skip-worktree Web.config` en la copia local (que ignora sus cambios sin afectar el archivo del repo).
+
+**Para producción**: cifrar la sección `appSettings` con DPAPI del propio servidor:
+```powershell
+& "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\aspnet_regiis.exe" -pe "appSettings" -app "/PortalReportesCrystal"
+```
+La descifración es transparente para ASP.NET cuando corre bajo la misma identidad del AppPool que se usó para cifrar. Documentar en el runbook de despliegue qué cuenta cifró el archivo.
+
+### Codificación de caracteres
+
+`Web.config` incluye `<globalization requestEncoding="utf-8" responseEncoding="utf-8" fileEncoding="utf-8" culture="es-SV" uiCulture="es-SV" />` en `system.web` para evitar el mojibake tipo "AuditorÃa". Las vistas críticas (`Dashboard.cshtml`, `Interacciones.cshtml`, `Sapbo/Ver.cshtml`, `Permisos/*.cshtml`) se guardan con BOM UTF-8.
+
 ### Seguridad y cumplimiento
 
 - Solo metadatos: nunca se almacena contenido del reporte ni credenciales de usuario.
