@@ -47,17 +47,45 @@
                         <a href="@Url.Action("Estadisticas", "Home")" class="nav-link">Estadísticas SAP BO</a>
                     }
                     @{
-                        // Enlace "Auditoria" visible solo si el usuario pertenece a
-                        // alguno de los grupos AD configurados en Web.config -> Audit:GruposAdmin
+                        // Enlace "Auditoria" visible si el usuario pertenece a alguno de
+                        // los grupos AD configurados en Web.config -> Audit:GruposAdmin, o
+                        // si Audit:BypassAdminEnDev=true (solo para desarrollo).
                         bool _esAdminAudit = false;
                         try
                         {
-                            string _grupos = System.Configuration.ConfigurationManager.AppSettings["Audit:GruposAdmin"] ?? "";
-                            if (!string.IsNullOrWhiteSpace(_grupos) && User != null && User.Identity != null && User.Identity.IsAuthenticated)
+                            if (User != null && User.Identity != null && User.Identity.IsAuthenticated)
                             {
-                                foreach (var g in _grupos.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
+                                string _bypass = System.Configuration.ConfigurationManager.AppSettings["Audit:BypassAdminEnDev"] ?? "false";
+                                if (string.Equals(_bypass, "true", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    if (User.IsInRole(g.Trim())) { _esAdminAudit = true; break; }
+                                    _esAdminAudit = true;
+                                }
+                                else
+                                {
+                                    // Usuarios individuales
+                                    string _usuarios = System.Configuration.ConfigurationManager.AppSettings["Audit:UsuariosAdmin"] ?? "";
+                                    if (!string.IsNullOrWhiteSpace(_usuarios))
+                                    {
+                                        foreach (var u in _usuarios.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
+                                        {
+                                            if (string.Equals(u.Trim(), User.Identity.Name, StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                _esAdminAudit = true; break;
+                                            }
+                                        }
+                                    }
+                                    // Grupos AD
+                                    if (!_esAdminAudit)
+                                    {
+                                        string _grupos = System.Configuration.ConfigurationManager.AppSettings["Audit:GruposAdmin"] ?? "";
+                                        if (!string.IsNullOrWhiteSpace(_grupos))
+                                        {
+                                            foreach (var g in _grupos.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
+                                            {
+                                                if (User.IsInRole(g.Trim())) { _esAdminAudit = true; break; }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -66,6 +94,8 @@
                     @if (_esAdminAudit)
                     {
                         <a href="@Url.Action("Dashboard", "Auditoria")" class="nav-link">Auditoría</a>
+                        <a href="@Url.Action("Interacciones", "Auditoria")" class="nav-link">En vivo</a>
+                        <a href="@Url.Action("Index", "Permisos")" class="nav-link">Permisos</a>
                     }
                     @* User.Identity.Name muestra el usuario Windows autenticado *@
                     <span class="nav-user">@User.Identity.Name</span>

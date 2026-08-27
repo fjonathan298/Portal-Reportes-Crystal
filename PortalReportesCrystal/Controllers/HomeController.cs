@@ -54,6 +54,13 @@ namespace PortalReportesCrystal.Controllers
                 .ThenBy(r => r.Nombre)
                 .ToList();
 
+            if (PermisosService.Habilitado)
+            {
+                ordenados = ordenados
+                    .Where(r => PermisosService.TieneAcceso(HttpContext, r))
+                    .ToList();
+            }
+
             var model = new HomeViewModel
             {
                 Reportes = ordenados,

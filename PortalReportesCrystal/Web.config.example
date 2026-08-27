@@ -38,6 +38,17 @@
     <add key="Audit:IntervaloFlushSeg" value="5" />
     <add key="Audit:MaxLoteInsert" value="500" />
     <add key="Audit:GruposAdmin" value="__DOMINIO__\__GRUPO_AD_LECTORES__" />
+    <!-- Usuarios AD individuales autorizados (separados por ;). Complementa a
+         Audit:GruposAdmin cuando aun no exista el grupo formal en dominio. -->
+    <add key="Audit:UsuariosAdmin" value="__DOMINIO__\__USUARIO_ADMIN__" />
+    <!-- SOLO desarrollo. En produccion mantener en "false". -->
+    <add key="Audit:BypassAdminEnDev" value="false" />
+
+    <!-- Permisos (Nivel 1). Requiere tablas audit.Rol, audit.RolReporte,
+         audit.UsuarioRol y audit.PermisoLog creadas. Ver
+         Database/audit_permisos_schema.sql. Mientras esta en false el portal
+         opera en modo abierto (cualquier usuario autenticado ve todos los reportes). -->
+    <add key="Permisos:Habilitado" value="false" />
   </appSettings>
 
   <system.web>
@@ -54,6 +65,8 @@
       </assemblies>
     </compilation>
     <httpRuntime targetFramework="4.8" maxRequestLength="51200" />
+    <!-- Fuerza UTF-8 en el pipeline ASP.NET (evita mojibake tipo "AuditorIa"). -->
+    <globalization requestEncoding="utf-8" responseEncoding="utf-8" fileEncoding="utf-8" culture="es-SV" uiCulture="es-SV" />
   </system.web>
 
   <system.webServer>

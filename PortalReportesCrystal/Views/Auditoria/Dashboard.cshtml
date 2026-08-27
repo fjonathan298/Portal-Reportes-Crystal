@@ -7,10 +7,11 @@
     <p class="subtitulo">Registros de uso del portal · fuente: <code>DWH_FRAMEWORK.audit</code></p>
 </div>
 
-<div class="aviso" style="background:#FFF8E1;color:#7d5b00;border:1px solid #F0C36D;border-radius:4px;padding:12px;margin-bottom:16px;">
-    <strong>Panel en construcción.</strong>
-    Los datos se poblarán una vez ejecutado <code>Database\audit_schema.sql</code> en Perseo/DWH_FRAMEWORK
-    y habilitada la clave <code>Audit:Habilitado=true</code> en <code>Web.config</code>.
+<div id="dash-loading" class="aviso" style="background:#E3F2FD;color:#1565C0;border:1px solid #90CAF9;border-radius:4px;padding:12px;margin-bottom:16px;">
+    Cargando datos...
+</div>
+
+<div id="dash-error" style="display:none;" class="aviso" style="background:#FFEBEE;color:#B71C1C;border:1px solid #EF9A9A;border-radius:4px;padding:12px;margin-bottom:16px;">
 </div>
 
 <div class="dashboard-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:24px;">
@@ -32,20 +33,20 @@
     <div class="card" style="background:var(--sr-blanco);border:1px solid var(--sr-borde);border-radius:4px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
         <h3 style="margin:0 0 8px 0;color:var(--sr-primario);">Top 10 reportes (30 d)</h3>
         <ol id="top-reportes" style="margin:0;padding-left:20px;font-size:13px;color:var(--sr-texto-sec);">
-            <li>Pendiente de datos</li>
+            <li>Cargando...</li>
         </ol>
     </div>
 
     <div class="card" style="background:var(--sr-blanco);border:1px solid var(--sr-borde);border-radius:4px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
         <h3 style="margin:0 0 8px 0;color:var(--sr-primario);">Top 10 usuarios (30 d)</h3>
         <ol id="top-usuarios" style="margin:0;padding-left:20px;font-size:13px;color:var(--sr-texto-sec);">
-            <li>Pendiente de datos</li>
+            <li>Cargando...</li>
         </ol>
     </div>
 
     <div class="card" style="background:var(--sr-blanco);border:1px solid var(--sr-borde);border-radius:4px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
         <h3 style="margin:0 0 8px 0;color:var(--sr-primario);">Distribución por hora (24 h)</h3>
-        <p style="color:var(--sr-texto-sec);font-size:13px;">Gráfico pendiente. Fuente: <code>audit.Evento</code> agregado por hora.</p>
+        <div id="dist-hora" style="display:flex;align-items:flex-end;height:120px;gap:2px;"></div>
     </div>
 
     <div class="card" style="background:var(--sr-blanco);border:1px solid var(--sr-borde);border-radius:4px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);">
@@ -57,7 +58,92 @@
 </div>
 
 <p style="color:var(--sr-texto-sec);font-size:12px;text-align:center;">
-    Los datos de este panel se agregan diariamente por el job <code>audit_agregacion_diaria.sql</code>
-    y respetan la política de retención de <code>audit_purge_job.sql</code>. Todo acceso a este panel
-    queda registrado como evento <code>ACCESO_DASHBOARD</code>.
+    Los datos se consultan en tiempo real desde <code>audit.Evento</code> y <code>audit.Sesion</code>.
+    Todo acceso a este panel queda registrado como evento <code>ACCESO_DASHBOARD</code>.
 </p>
+
+<script>
+(function() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '@Url.Action("DashboardData", "Auditoria")', true);
+    xhr.onload = function() {
+        document.getElementById('dash-loading').style.display = 'none';
+        if (xhr.status !== 200) {
+            document.getElementById('dash-error').textContent = 'Error HTTP ' + xhr.status;
+            document.getElementById('dash-error').style.display = 'block';
+            return;
+        }
+        try {
+            var d = JSON.parse(xhr.responseText);
+            if (d.error) {
+                document.getElementById('dash-error').textContent = d.error;
+                document.getElementById('dash-error').style.display = 'block';
+                return;
+            }
+
+            var metricas = ['sesiones_24h','eventos_24h','exportaciones_24h','sesiones_30d','usuarios_30d','reportes_30d','errores_24h','accesos_denegados_24h'];
+            for (var i = 0; i < metricas.length; i++) {
+                var el = document.querySelector('[data-metric="' + metricas[i] + '"]');
+                if (el && d[metricas[i]] !== undefined) el.textContent = d[metricas[i]];
+            }
+
+            var topR = document.getElementById('top-reportes');
+            if (d.top_reportes && d.top_reportes.length) {
+                topR.innerHTML = '';
+                for (var j = 0; j < d.top_reportes.length; j++) {
+                    var li = document.createElement('li');
+                    li.textContent = d.top_reportes[j].NombreReporte + ' (' + d.top_reportes[j].Total + ')';
+                    topR.appendChild(li);
+                }
+            } else {
+                topR.innerHTML = '<li>Sin datos</li>';
+            }
+
+            var topU = document.getElementById('top-usuarios');
+            if (d.top_usuarios && d.top_usuarios.length) {
+                topU.innerHTML = '';
+                for (var k = 0; k < d.top_usuarios.length; k++) {
+                    var li2 = document.createElement('li');
+                    li2.textContent = d.top_usuarios[k].Usuario + ' (' + d.top_usuarios[k].Total + ')';
+                    topU.appendChild(li2);
+                }
+            } else {
+                topU.innerHTML = '<li>Sin datos</li>';
+            }
+
+            var distEl = document.getElementById('dist-hora');
+            if (d.dist_hora && d.dist_hora.length) {
+                var max = 1;
+                for (var m = 0; m < d.dist_hora.length; m++) {
+                    if (d.dist_hora[m].Total > max) max = d.dist_hora[m].Total;
+                }
+                var horasMap = {};
+                for (var n = 0; n < d.dist_hora.length; n++) {
+                    horasMap[d.dist_hora[n].Hora] = d.dist_hora[n].Total;
+                }
+                distEl.innerHTML = '';
+                for (var h = 0; h < 24; h++) {
+                    var val = horasMap[h] || 0;
+                    var pct = Math.max(2, (val / max) * 100);
+                    var bar = document.createElement('div');
+                    bar.style.cssText = 'flex:1;background:var(--sr-primario);border-radius:2px 2px 0 0;min-width:8px;';
+                    bar.style.height = pct + '%';
+                    bar.title = h + ':00 — ' + val + ' eventos';
+                    distEl.appendChild(bar);
+                }
+            } else {
+                distEl.innerHTML = '<p style="color:var(--sr-texto-sec);font-size:13px;">Sin datos</p>';
+            }
+        } catch(e) {
+            document.getElementById('dash-error').textContent = 'Error al procesar: ' + e.message;
+            document.getElementById('dash-error').style.display = 'block';
+        }
+    };
+    xhr.onerror = function() {
+        document.getElementById('dash-loading').style.display = 'none';
+        document.getElementById('dash-error').textContent = 'Error de conexión';
+        document.getElementById('dash-error').style.display = 'block';
+    };
+    xhr.send();
+})();
+</script>

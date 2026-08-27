@@ -114,6 +114,7 @@
     <Content Include="Views\Sapbo\Ver.cshtml" />
     <Content Include="Views\Sapbo\TestIframe.cshtml" />
     <Content Include="Views\Auditoria\Dashboard.cshtml" />
+    <Content Include="Views\Auditoria\Interacciones.cshtml" />
     <Content Include="Views\_ViewStart.cshtml" />
     <Content Include="docs\PATRON_PARAMETROS_DINAMICOS.md" />
     <Content Include="docs\USO_API_SAPBO_Y_AUDITORIA.md" />

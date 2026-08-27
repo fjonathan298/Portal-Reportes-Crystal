@@ -111,6 +111,16 @@ namespace PortalReportesCrystal.Controllers
             if (ruta == null || !System.IO.File.Exists(ruta))
                 return HttpNotFound("Reporte no encontrado");
 
+            if (PermisosService.Habilitado)
+            {
+                var ri = new ReporteInfo { RaizId = raizId, PathRelativo = path, Nombre = Path.GetFileNameWithoutExtension(path) };
+                if (!PermisosService.TieneAcceso(HttpContext, ri))
+                {
+                    AuditarReporte("ERROR_ACCESO", raizId, path, mensajeError: "Permiso denegado");
+                    return new HttpStatusCodeResult(403, "No tiene permiso para acceder a este reporte.");
+                }
+            }
+
             var model = new ReporteViewModel
             {
                 NombreReporte = Path.GetFileNameWithoutExtension(path),
@@ -162,6 +172,13 @@ namespace PortalReportesCrystal.Controllers
             string ruta = ResolverRuta(raizId, path);
             if (ruta == null || !System.IO.File.Exists(ruta))
                 return HttpNotFound();
+
+            if (PermisosService.Habilitado)
+            {
+                var ri = new ReporteInfo { RaizId = raizId, PathRelativo = path, Nombre = Path.GetFileNameWithoutExtension(path) };
+                if (!PermisosService.TieneAcceso(HttpContext, ri))
+                    return new HttpStatusCodeResult(403, "No tiene permiso para acceder a este reporte.");
+            }
 
             var reportDocument = new ReportDocument();
             var sw = Stopwatch.StartNew();
@@ -351,6 +368,13 @@ namespace PortalReportesCrystal.Controllers
             if (ruta == null || !System.IO.File.Exists(ruta))
                 return HttpNotFound();
 
+            if (PermisosService.Habilitado)
+            {
+                var ri = new ReporteInfo { RaizId = raizId, PathRelativo = path, Nombre = Path.GetFileNameWithoutExtension(path) };
+                if (!PermisosService.TieneAcceso(HttpContext, ri))
+                    return new HttpStatusCodeResult(403, "No tiene permiso para acceder a este reporte.");
+            }
+
             // Limitar los valores para evitar peticiones abusivas
             if (nInicio < 1) nInicio = 20;
             if (nInicio > 200) nInicio = 200;
@@ -510,6 +534,21 @@ namespace PortalReportesCrystal.Controllers
             string ruta = ResolverRuta(raizId, path);
             if (ruta == null || !System.IO.File.Exists(ruta))
                 return HttpNotFound();
+
+            if (PermisosService.Habilitado)
+            {
+                var ri = new ReporteInfo { RaizId = raizId, PathRelativo = path, Nombre = Path.GetFileNameWithoutExtension(path) };
+                if (!PermisosService.TieneAcceso(HttpContext, ri))
+                {
+                    AuditarReporte("ERROR_ACCESO", raizId, path, mensajeError: "Permiso denegado (exportar)");
+                    return new HttpStatusCodeResult(403, "No tiene permiso para exportar este reporte.");
+                }
+                if (!PermisosService.TienePermisoExportar(HttpContext, ri))
+                {
+                    AuditarReporte("ERROR_ACCESO", raizId, path, mensajeError: "Exportacion no permitida");
+                    return new HttpStatusCodeResult(403, "No tiene permiso para exportar este reporte.");
+                }
+            }
 
             // Si el reporte tiene parametros no completados, redirigir al formulario
             var faltantes = ParametrosFaltantes(ruta);
