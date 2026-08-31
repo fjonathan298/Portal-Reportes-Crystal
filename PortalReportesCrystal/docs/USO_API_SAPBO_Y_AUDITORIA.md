@@ -307,3 +307,255 @@ SAP BO (despues de abrir la pestana externa), esos cambios no son visibles
 para el portal. Para capturar esos cambios se requeriria activar la auditoria
 nativa de SAP BO desde CMC > Auditoria, lo cual es una configuracion del
 servidor SAP BO independiente del portal.
+
+---
+
+## 4. Mapeo de reportes y carpetas via API REST de SAP BO
+
+### 4.1 Estructura jerarquica del CMS
+
+El CMS (Central Management Server) de SAP BO organiza los objetos publicados
+en una jerarquia de carpetas similar a un sistema de archivos. La estructura
+tipica en produccion es:
+
+```
+Root Folder
+├── Public Folders                       (carpeta raiz permitida)
+│   ├── Finanzas                         (nivel 1 — categoria principal)
+│   │   ├── CxC                          (nivel 2 — subcategoria)
+│   │   │   ├── Mensuales                (nivel 3 — sub-subcategoria)
+│   │   │   │   └── Reporte_CxC_Mensual.rpt
+│   │   │   └── Reporte_CxC_Diario.rpt
+│   │   └── Reporte_Balance.rpt
+│   ├── Inventarios                      (nivel 1)
+│   │   ├── Kardex                       (nivel 2)
+│   │   │   └── Kardex_Detalle.rpt
+│   │   └── Existencias.rpt
+│   ├── Ventas                           (nivel 1)
+│   │   ├── Por Pais                     (nivel 2)
+│   │   │   ├── SV                       (nivel 3)
+│   │   │   │   └── Ventas_SV.wid
+│   │   │   └── HN                      (nivel 3)
+│   │   │       └── Ventas_HN.wid
+│   │   └── Consolidado_Ventas.wid
+│   └── RRHH                             (nivel 1)
+│       └── Planilla.rpt
+├── User Folders                         (carpeta raiz permitida)
+│   └── <usuario>/
+│       └── Reportes personales
+└── Carpetas del sistema (excluidas)
+    ├── Temporary Storage
+    ├── Instances
+    └── ~WebIntelligence
+```
+
+**Profundidad maxima configurada:** 10 niveles (parametro `depth > 10` en
+`BuscarCrystalEnCarpeta`). En la practica, la mayoria de reportes estan entre
+los niveles 1 y 4.
+
+### 4.2 Descubrimiento de carpetas raiz
+
+**Endpoint:** `GET /biprws/infostore`
+
+Retorna los EntitySets disponibles. El portal consulta el nodo raiz del
+infostore para obtener las carpetas de primer nivel:
+
+**Endpoint:** `GET /biprws/infostore/Root%20Folder/children?pageSize=200`
+
+**Respuesta (simplificada):**
+```json
+{
+  "entries": [
+    {
+      "id": "42",
+      "name": "Public Folders",
+      "type": "Folder",
+      "cuid": "AcXyz..."
+    },
+    {
+      "id": "58",
+      "name": "User Folders",
+      "type": "Folder",
+      "cuid": "BdWyz..."
+    },
+    {
+      "id": "99",
+      "name": "Temporary Storage",
+      "type": "Folder"
+    }
+  ]
+}
+```
+
+**Filtro aplicado en el portal:** solo se recorren las carpetas cuyo `name`
+esta en la lista `carpetasRaizPermitidas`:
+
+- `"Public Folders"` / `"Carpetas publicas"` / `"Carpetas públicas"`
+- `"User Folders"` / `"Carpetas de usuario"`
+
+Las carpetas del sistema (`Temporary Storage`, `Instances`, `Desktop Add-ons`,
+`~WebIntelligence`, etc.) se excluyen via el conjunto `_carpetasExcluidas`.
+
+### 4.3 Recorrido recursivo de subcarpetas (Crystal Reports)
+
+**Endpoint:** `GET /biprws/infostore/{folderId}/children?pageSize=200`
+
+Desde cada carpeta raiz permitida, el metodo `BuscarCrystalEnCarpeta` recorre
+recursivamente todos los hijos. Para cada entrada evalua el campo `type`:
+
+| Valor de `type` | Accion |
+|---|---|
+| `Folder`, `User`, `PersonalCategory`, `FavoritesFolder` | Si no esta en `_carpetasExcluidas`, entra recursivamente y acumula la ruta |
+| Contiene `CrystalReport`, `Crystal Report` o `CR4E` | Lo agrega como reporte Crystal con la ruta acumulada como carpeta |
+| Cualquier otro | Lo ignora (no es Crystal ni carpeta navegable) |
+
+**Respuesta por entrada (simplificada):**
+```json
+{
+  "id": "12345",
+  "name": "Kardex_Detalle",
+  "type": "CrystalReport",
+  "cuid": "FnKv3...",
+  "description": ""
+}
+```
+
+**Acumulacion de la ruta completa:**
+
+La ruta se construye concatenando el nombre de cada carpeta padre con el
+separador ` / `. Ejemplo de acumulacion durante la recursion:
+
+| Profundidad | `pathPadre` al entrar | Nombre de la carpeta | `subPath` resultante |
+|---|---|---|---|
+| 0 | `""` | `"Finanzas"` | `"Finanzas"` |
+| 1 | `"Finanzas"` | `"CxC"` | `"Finanzas / CxC"` |
+| 2 | `"Finanzas / CxC"` | `"Mensuales"` | `"Finanzas / CxC / Mensuales"` |
+
+Cuando se encuentra un Crystal Report en profundidad 2, su campo `Carpeta`
+sera `"Finanzas / CxC / Mensuales"` — la ruta completa, no solo el nombre
+de la carpeta inmediata.
+
+**Cache compartido:** cada carpeta visitada se registra en
+`_cacheRutas[folderId] = subPath`. Este cache es un `ConcurrentDictionary`
+estatico compartido entre las consultas de Crystal y WebI, evitando llamadas
+duplicadas a la API.
+
+### 4.4 Resolucion de carpetas para WebI (cadena de padres)
+
+**Endpoint para listar WebI:** `GET /biprws/raylight/v1/documents`
+
+La API Raylight retorna documentos WebI con su `folderId` pero **sin la ruta
+completa** de la carpeta. Para reconstruir la jerarquia, el portal usa dos
+estrategias complementarias:
+
+**Estrategia 1 — Cache compartido (rapida, sin llamada API adicional):**
+
+Si el `folderId` del WebI ya fue visitado durante el recorrido de Crystal
+Reports (`_cacheRutas` ya tiene la ruta), se reutiliza directamente:
+
+```
+_cacheRutas.GetOrAdd(folderId, id => ResolverRutaCarpeta(id, token))
+```
+
+**Estrategia 2 — Resolucion ascendente via `parentId` (fallback):**
+
+Si el `folderId` no esta en cache (el WebI esta en una carpeta que Crystal
+no visito), el metodo `ResolverRutaCarpeta` camina hacia arriba por la
+jerarquia usando el campo `parentId` de cada carpeta:
+
+**Endpoint:** `GET /biprws/infostore/{folderId}`
+
+**Respuesta:**
+```json
+{
+  "id": "789",
+  "name": "Por Pais",
+  "type": "Folder",
+  "parentId": "456"
+}
+```
+
+**Algoritmo de resolucion ascendente:**
+
+1. Consultar `GET /biprws/infostore/{currentId}`.
+2. Extraer `name` y `parentId`.
+3. Si `name` es una carpeta raiz (`Root Folder`, `Public Folders`, etc.)
+   o excluida, detenerse.
+4. Si `currentId` ya esta en `_cacheRutas`, usar la ruta cacheada como
+   prefijo y detenerse.
+5. Agregar `name` al inicio de la lista de partes.
+6. Avanzar a `currentId = parentId`.
+7. Repetir hasta un maximo de 12 niveles.
+8. Unir las partes con ` / ` para formar la ruta completa.
+
+**Ejemplo de resolucion para un WebI en `Ventas / Por Pais / SV`:**
+
+| Iteracion | `currentId` | `name` obtenido | `parentId` | Accion |
+|---|---|---|---|---|
+| 1 | `"789"` (SV) | `"SV"` | `"456"` | partes = [`"SV"`] |
+| 2 | `"456"` (Por Pais) | `"Por Pais"` | `"123"` | partes = [`"Por Pais"`, `"SV"`] |
+| 3 | `"123"` (Ventas) | `"Ventas"` | `"42"` | partes = [`"Ventas"`, `"Por Pais"`, `"SV"`] |
+| 4 | `"42"` (Public Folders) | `"Public Folders"` | — | Es carpeta raiz → detenerse |
+
+**Resultado:** `"Ventas / Por Pais / SV"`.
+
+La ruta resuelta se almacena en `_cacheRutas[folderId]` para evitar repetir
+la cadena de consultas si otro WebI esta en la misma carpeta.
+
+### 4.5 Como se muestra en el portal
+
+La ruta completa de la carpeta se asigna al campo `Carpeta` del modelo
+`ReporteWebI`. En `HomeController.CargarReportesWebI()`, este campo se mapea
+a `Categoria` del `ReporteInfo`:
+
+```csharp
+Categoria = w.Carpeta   // "Finanzas / CxC / Mensuales"
+```
+
+La vista `Index.cshtml` agrupa los reportes SAP BO por `Categoria` en
+secciones colapsables (`<details>`). Esto significa que los reportes se
+presentan agrupados por su ruta completa en el CMS:
+
+```
+▸ Finanzas / CxC / Mensuales          (2 reportes)
+▸ Finanzas / CxC                       (1 reporte)
+▸ Inventarios / Kardex                 (1 reporte)
+▸ Ventas / Por Pais / SV              (1 reporte)
+▸ Ventas / Por Pais / HN              (1 reporte)
+▸ Ventas                               (1 reporte)
+```
+
+### 4.6 Rendimiento y optimizaciones
+
+| Aspecto | Detalle |
+|---|---|
+| **Cache de rutas** | `ConcurrentDictionary<string, string>` estatico compartido entre Crystal y WebI. Se llena durante el recorrido de Crystal y se reutiliza para WebI. |
+| **Cache de resultados** | Todos los reportes (Crystal + WebI) se cachean por 15 minutos (configurable). Las llamadas a la API solo ocurren al expirar el cache. |
+| **Profundidad maxima Crystal** | 10 niveles de recursion. Carpetas mas profundas se ignoran silenciosamente. |
+| **Profundidad maxima WebI** | 12 niveles de resolucion ascendente via `parentId`. |
+| **Paginacion** | `pageSize=200` en cada consulta de hijos. Si una carpeta tiene mas de 200 objetos, solo se ven los primeros 200 (en la practica ninguna carpeta del CMC tiene tantos hijos directos). |
+| **Thread-safety** | `ConcurrentDictionary` y `TryAdd` garantizan que el cache sea seguro en escenarios multi-hilo (IIS con multiples requests simultaneos). |
+
+### 4.7 Archivos involucrados
+
+| Archivo | Lineas | Rol |
+|---|---|---|
+| `Services/SapBoClient.cs` | 36-44 | Definicion de `_cacheRutas` y `_carpetasRaiz` |
+| `Services/SapBoClient.cs` | 46-53 | Definicion de `_carpetasExcluidas` |
+| `Services/SapBoClient.cs` | 315-355 | `ConsultarCrystalReports`: recorre carpetas raiz |
+| `Services/SapBoClient.cs` | 357-420 | `BuscarCrystalEnCarpeta`: recursion con acumulacion de ruta |
+| `Services/SapBoClient.cs` | 260-310 | `ConsultarWebI`: resolucion de carpeta con cache compartido |
+| `Services/SapBoClient.cs` | 955-997 | `ResolverRutaCarpeta`: cadena ascendente via `parentId` |
+| `Controllers/HomeController.cs` | 317-342 | `CargarReportesWebI`: mapeo `Carpeta` → `Categoria` |
+| `Views/Home/Index.cshtml` | — | Agrupacion visual por `Categoria` en `<details>` |
+
+### 4.8 Referencia rapida de endpoints utilizados
+
+| Endpoint | Metodo | Uso en el portal |
+|---|---|---|
+| `GET /biprws/infostore` | GET | Verificar EntitySets disponibles |
+| `GET /biprws/infostore/{id}/children?pageSize=200` | GET | Listar hijos de una carpeta (recursion) |
+| `GET /biprws/infostore/{id}` | GET | Obtener metadatos de una carpeta (`name`, `parentId`) para resolucion ascendente |
+| `GET /biprws/raylight/v1/documents` | GET | Listar documentos WebI con `folderId` |
+| Header `X-SAP-LogonToken` | — | Autenticacion en todas las peticiones |
+
