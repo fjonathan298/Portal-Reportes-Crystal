@@ -137,6 +137,51 @@ namespace PortalReportesCrystal.Models
         public bool WebIHabilitado { get; set; }
     }
 
+    public class CarpetaNodo
+    {
+        public string Nombre { get; set; }
+        public string RutaCompleta { get; set; }
+        public Dictionary<string, CarpetaNodo> Hijos { get; set; }
+        public List<ReporteInfo> Reportes { get; set; }
+
+        public CarpetaNodo()
+        {
+            Hijos = new Dictionary<string, CarpetaNodo>(StringComparer.OrdinalIgnoreCase);
+            Reportes = new List<ReporteInfo>();
+        }
+
+        public int ContarReportes()
+        {
+            int total = Reportes.Count;
+            foreach (var h in Hijos.Values) total += h.ContarReportes();
+            return total;
+        }
+
+        public static CarpetaNodo ConstruirArbol(IEnumerable<ReporteInfo> reportes)
+        {
+            var raiz = new CarpetaNodo { Nombre = "", RutaCompleta = "" };
+            foreach (var r in reportes)
+            {
+                var partes = (r.Categoria ?? "SAP BO").Split(new[] { " / " }, StringSplitOptions.RemoveEmptyEntries);
+                var nodo = raiz;
+                string acum = "";
+                foreach (var p in partes)
+                {
+                    acum = string.IsNullOrEmpty(acum) ? p : acum + " / " + p;
+                    CarpetaNodo hijo;
+                    if (!nodo.Hijos.TryGetValue(p, out hijo))
+                    {
+                        hijo = new CarpetaNodo { Nombre = p, RutaCompleta = acum };
+                        nodo.Hijos[p] = hijo;
+                    }
+                    nodo = hijo;
+                }
+                nodo.Reportes.Add(r);
+            }
+            return raiz;
+        }
+    }
+
     // Clases usadas para deserializar el JSON de reportes CMC.
     // La estructura debe coincidir con ReportesCMC\catalogo.json
     public class CatalogoCMC

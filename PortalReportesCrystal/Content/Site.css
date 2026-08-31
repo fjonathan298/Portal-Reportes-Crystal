@@ -133,6 +133,8 @@ body.pagina-ver main.container { max-width: 100%; padding: 20px 24px; }
 details[open] .grupo-flecha { transform: rotate(180deg); }
 .grupo-reportes .tabla-reportes { border-radius: 0; box-shadow: none; }
 .grupo-reportes .tabla-reportes th { background: var(--sr-primario-alt); font-size: 12px; }
+.grupo-reportes .grupo-reportes { margin: 4px 0 4px 1.2rem; border-left: 3px solid #E0E0E0; }
+.grupo-reportes .grupo-reportes > .grupo-titulo { font-size: 13px; padding: 8px 12px; background: #FAFAFA; border-left-width: 3px; }
 
 /* ---------- BADGES ---------- */
 .badge { display: inline-block; padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }

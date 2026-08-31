@@ -104,6 +104,7 @@
     var reportesBO = Model.Reportes.Where(r => esSapBo(r)).ToList();
     var gruposSR = reportesSR.GroupBy(r => r.Categoria).OrderBy(g => g.Key).ToList();
     var gruposBO = reportesBO.GroupBy(r => r.Categoria).OrderBy(g => g.Key).ToList();
+    var arbolBO = CarpetaNodo.ConstruirArbol(reportesBO);
 
     var secciones = new[] {
         new { Titulo = "Server Report", Icono = "&#128421;", Reportes = reportesSR, Grupos = gruposSR, Clase = "seccion-serverreport" },
@@ -123,7 +124,13 @@
                 <span class="seccion-origen-flecha">&#9662;</span>
             </summary>
 
-        @foreach (var grupo in seccion.Grupos)
+        @if (seccion.Clase == "seccion-sapbo")
+        {
+            @Html.Partial("_ArbolCarpetas", arbolBO)
+        }
+        else
+        {
+        foreach (var grupo in seccion.Grupos)
         {
             <details class="grupo-reportes" data-grupo="@grupo.Key" @(seccion.Grupos.Count <= 3 ? "open" : "")>
                 <summary class="grupo-titulo">
@@ -226,6 +233,7 @@
                 </table>
             </details>
         }
+        }
         </details>
     }
     </div>
@@ -257,29 +265,49 @@ else
         var totalVisibles = 0;
         var busqLower = textoBusqueda.toLowerCase().trim();
 
-        document.querySelectorAll('.lista-carpetas details').forEach(function (grupo) {
+        // Paso 1: mostrar/ocultar cada fila segun los filtros
+        document.querySelectorAll('.lista-carpetas tbody tr').forEach(function (fila) {
+            var tipo = fila.getAttribute('data-tipo');
+            var param = fila.getAttribute('data-param');
+            var estado = fila.getAttribute('data-estado');
+            var busq = fila.getAttribute('data-busq') || '';
+
+            var pasaTipo = (filtroTipo === 'todos') || (tipo === filtroTipo);
+            var pasaParam = (filtroParam === 'todos') || (param === filtroParam);
+            var pasaEstado = (filtroEstado === 'todos') || (estado === filtroEstado);
+            var pasaBusq = (busqLower === '') || (busq.indexOf(busqLower) >= 0);
+
+            if (pasaTipo && pasaParam && pasaEstado && pasaBusq) {
+                fila.style.display = '';
+                totalVisibles++;
+            } else {
+                fila.style.display = 'none';
+            }
+        });
+
+        // Paso 2: actualizar contadores y visibilidad de grupos (bottom-up para anidados)
+        var grupos = Array.prototype.slice.call(document.querySelectorAll('.lista-carpetas .grupo-reportes'));
+        for (var i = grupos.length - 1; i >= 0; i--) {
+            var grupo = grupos[i];
             var visiblesEnGrupo = 0;
-            grupo.querySelectorAll('tbody tr').forEach(function (fila) {
-                var tipo = fila.getAttribute('data-tipo');
-                var param = fila.getAttribute('data-param');
-                var estado = fila.getAttribute('data-estado');
-                var busq = fila.getAttribute('data-busq') || '';
-
-                var pasaTipo = (filtroTipo === 'todos') || (tipo === filtroTipo);
-                var pasaParam = (filtroParam === 'todos') || (param === filtroParam);
-                var pasaEstado = (filtroEstado === 'todos') || (estado === filtroEstado);
-                var pasaBusq = (busqLower === '') || (busq.indexOf(busqLower) >= 0);
-
-                if (pasaTipo && pasaParam && pasaEstado && pasaBusq) {
-                    fila.style.display = '';
-                    visiblesEnGrupo++;
-                    totalVisibles++;
-                } else {
-                    fila.style.display = 'none';
+            // Contar filas visibles en tablas directas (no en subgrupos)
+            var tablas = grupo.children;
+            for (var t = 0; t < tablas.length; t++) {
+                if (tablas[t].tagName === 'TABLE') {
+                    var filas = tablas[t].querySelectorAll('tbody tr');
+                    for (var f = 0; f < filas.length; f++) {
+                        if (filas[f].style.display !== 'none') visiblesEnGrupo++;
+                    }
                 }
-            });
+            }
+            // Contar subgrupos visibles
+            var subGrupos = grupo.children;
+            for (var s = 0; s < subGrupos.length; s++) {
+                if (subGrupos[s].classList && subGrupos[s].classList.contains('grupo-reportes') && subGrupos[s].style.display !== 'none') {
+                    visiblesEnGrupo += parseInt(subGrupos[s].querySelector('.grupo-conteo').getAttribute('data-visibles') || '0', 10);
+                }
+            }
 
-            // Actualiza el contador y esconde el grupo entero si esta vacio
             var contador = grupo.querySelector('.grupo-conteo');
             if (contador) {
                 contador.textContent = visiblesEnGrupo + ' reportes';
@@ -287,18 +315,16 @@ else
             }
             grupo.style.display = visiblesEnGrupo === 0 ? 'none' : '';
 
-            // Auto-expandir cuando hay busqueda activa y resultados
             if (busqLower !== '' && visiblesEnGrupo > 0) {
                 grupo.setAttribute('open', '');
             }
-        });
+        }
 
-        // Ocultar secciones de origen cuando todos sus grupos estan ocultos
+        // Paso 3: actualizar secciones de origen
         document.querySelectorAll('.seccion-origen').forEach(function (seccion) {
             var visiblesEnSeccion = 0;
-            seccion.querySelectorAll('details.grupo-reportes').forEach(function (g) {
-                var c = g.querySelector('.grupo-conteo');
-                if (c) { visiblesEnSeccion += parseInt(c.getAttribute('data-visibles') || '0', 10); }
+            seccion.querySelectorAll('tbody tr').forEach(function (fila) {
+                if (fila.style.display !== 'none') visiblesEnSeccion++;
             });
             var conteoSeccion = seccion.querySelector('.seccion-origen-conteo');
             if (conteoSeccion) {
