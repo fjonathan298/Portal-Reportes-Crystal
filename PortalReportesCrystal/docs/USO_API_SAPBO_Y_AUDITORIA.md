@@ -1,7 +1,7 @@
 # Uso del API REST de SAP BusinessObjects y Arquitectura de Auditoria
 
 **Autor:** Jonathan Flores — BI/DWH, Super Repuestos El Salvador  
-**Fecha:** 26 de agosto de 2026  
+**Fecha:** 26 de agosto de 2026 (actualizado 31 de agosto de 2026)  
 **Proposito:** documentar la implementacion del SDK/API REST de SAP BusinessObjects
 en el Portal de Reportes Crystal, y la arquitectura de auditoria construida sobre el.
 Este documento responde al compromiso de la minuta del Portal SIG del 20 de agosto
@@ -502,7 +502,7 @@ jerarquia usando el campo `parentId` de cada carpeta:
 La ruta resuelta se almacena en `_cacheRutas[folderId]` para evitar repetir
 la cadena de consultas si otro WebI esta en la misma carpeta.
 
-### 4.5 Como se muestra en el portal
+### 4.5 Como se muestra en el portal — arbol jerarquico de carpetas
 
 La ruta completa de la carpeta se asigna al campo `Carpeta` del modelo
 `ReporteWebI`. En `HomeController.CargarReportesWebI()`, este campo se mapea
@@ -512,18 +512,162 @@ a `Categoria` del `ReporteInfo`:
 Categoria = w.Carpeta   // "Finanzas / CxC / Mensuales"
 ```
 
-La vista `Index.cshtml` agrupa los reportes SAP BO por `Categoria` en
-secciones colapsables (`<details>`). Esto significa que los reportes se
-presentan agrupados por su ruta completa en el CMS:
+**Rendering anterior (plano):** la vista agrupaba los reportes SAP BO
+directamente por el valor completo de `Categoria`, generando grupos planos
+con la ruta completa como nombre:
 
 ```
 ▸ Finanzas / CxC / Mensuales          (2 reportes)
 ▸ Finanzas / CxC                       (1 reporte)
 ▸ Inventarios / Kardex                 (1 reporte)
-▸ Ventas / Por Pais / SV              (1 reporte)
-▸ Ventas / Por Pais / HN              (1 reporte)
-▸ Ventas                               (1 reporte)
 ```
+
+Esto no reflejaba la jerarquia real de carpetas del CMS y dificultaba la
+navegacion cuando habia muchas subcarpetas.
+
+**Rendering actual (arbol jerarquico):** a partir del commit `b464781`, la
+seccion SAP BO renderiza las carpetas como un arbol anidado real, donde cada
+subcarpeta aparece dentro de su carpeta padre:
+
+```
+▸ Finanzas                             (15 reportes)
+  ├─▸ CxC                             (3 reportes)
+  │   └─▸ Mensuales                   (2 reportes)
+  └─▸ Contabilidad                    (5 reportes)
+▸ Inventarios                          (2 reportes)
+  └─▸ Kardex                          (1 reporte)
+▸ Ventas                               (3 reportes)
+  └─▸ Por Pais                        (2 reportes)
+      ├─▸ SV                          (1 reporte)
+      └─▸ HN                          (1 reporte)
+```
+
+### 4.5.1 Modelo CarpetaNodo — construccion del arbol
+
+La clase `CarpetaNodo` en `Models/ReporteViewModel.cs` transforma la lista
+plana de reportes con rutas ` / `-separadas en una estructura de arbol:
+
+```csharp
+public class CarpetaNodo
+{
+    public string Nombre { get; set; }
+    public string RutaCompleta { get; set; }
+    public Dictionary<string, CarpetaNodo> Hijos { get; set; }
+    public List<ReporteInfo> Reportes { get; set; }
+}
+```
+
+**Metodo `ConstruirArbol(IEnumerable<ReporteInfo> reportes)`:**
+
+1. Crea un nodo raiz vacio.
+2. Para cada reporte, divide `Categoria` por ` / ` en segmentos.
+3. Navega el arbol desde la raiz, creando nodos intermedios segun sea
+   necesario (similar a `mkdir -p`).
+4. Al llegar al ultimo segmento, agrega el reporte a la lista `Reportes`
+   del nodo hoja.
+
+**Ejemplo de construccion:**
+
+| Reporte | Categoria | Nodos creados |
+|---|---|---|
+| `Reporte_CxC_Mensual.rpt` | `Finanzas / CxC / Mensuales` | raiz → Finanzas → CxC → Mensuales |
+| `Reporte_Balance.rpt` | `Finanzas` | raiz → Finanzas (ya existe) |
+| `Kardex_Detalle.rpt` | `Inventarios / Kardex` | raiz → Inventarios → Kardex |
+
+**Conteo recursivo:** `ContarReportes()` suma los reportes directos del nodo
+mas los de todos sus descendientes, para mostrar el total en el encabezado
+de cada carpeta (ej. "Finanzas — 15 reportes").
+
+### 4.5.2 Partial view recursivo _ArbolCarpetas.cshtml
+
+La vista parcial `Views/Home/_ArbolCarpetas.cshtml` recibe un `CarpetaNodo`
+como modelo e itera sus `Hijos` en orden alfabetico. Para cada hijo:
+
+1. Renderiza un `<details class="grupo-reportes">` con el nombre de la carpeta.
+2. Si el hijo tiene reportes directos (`hijo.Reportes.Any()`), renderiza una
+   tabla HTML con las mismas columnas y formato que los reportes Crystal locales
+   (Reporte, Origen, Params, Acciones).
+3. Si el hijo tiene subcarpetas (`hijo.Hijos.Any()`), llama recursivamente a
+   si mismo: `@Html.Partial("_ArbolCarpetas", hijo)`.
+
+Este patron genera `<details>` anidados en el DOM, donde cada subcarpeta
+esta fisicamente dentro del `<details>` de su carpeta padre.
+
+**Profundidad en produccion:** se han observado hasta 4 niveles de anidacion
+(ej. `Administrator > FINANZAS DEV > NIIF > COBROS`).
+
+### 4.5.3 CSS de subcarpetas anidadas
+
+Las subcarpetas anidadas tienen estilos diferenciados en `Content/Site.css`:
+
+```css
+.grupo-reportes .grupo-reportes {
+    margin: 4px 0 4px 1.2rem;
+    border-left: 3px solid #E0E0E0;
+}
+.grupo-reportes .grupo-reportes > .grupo-titulo {
+    font-size: 13px;
+    padding: 8px 12px;
+    background: #FAFAFA;
+    border-left-width: 3px;
+}
+```
+
+- `margin-left: 1.2rem` produce la indentacion visual por nivel.
+- `border-left: 3px solid #E0E0E0` dibuja una linea vertical que conecta
+  visualmente la subcarpeta con su padre.
+- El `font-size` reducido y `background` mas claro distinguen las subcarpetas
+  de las carpetas principales.
+
+### 4.5.4 JavaScript — filtrado con grupos anidados
+
+La funcion `aplicarFiltros()` en `Index.cshtml` fue reescrita con un enfoque
+de tres pasadas para manejar correctamente los grupos anidados:
+
+**Pasada 1 — Filtrar filas:**
+Recorre todas las filas `tbody tr` de la pagina y aplica los criterios de
+filtro (busqueda, tipo, parametros, estado). Cada fila se muestra u oculta
+individualmente, sin considerar la estructura de grupos.
+
+**Pasada 2 — Recorrido bottom-up de grupos:**
+Recorre todos los `.grupo-reportes` en orden inverso del DOM (bottom-up).
+Para cada grupo:
+- Cuenta las filas visibles en su tabla directa.
+- Cuenta los subgrupos `.grupo-reportes` visibles que contiene.
+- Si ambos conteos son cero, oculta el grupo.
+- Si al menos uno es mayor a cero, muestra el grupo y actualiza su contador.
+
+El recorrido inverso garantiza que los subgrupos mas profundos se evaluan
+antes que sus padres, propagando correctamente la visibilidad hacia arriba.
+
+**Pasada 3 — Contadores de seccion:**
+Cada seccion (Server Report, SAP BO) cuenta las filas `tbody tr` visibles
+dentro de ella para actualizar el contador del encabezado. Se cuentan filas,
+no grupos, para evitar doble conteo en estructuras anidadas.
+
+### 4.5.5 Integracion en Index.cshtml
+
+En `Index.cshtml`, la seccion SAP BO usa un condicional para renderizar el
+arbol en lugar del agrupamiento plano:
+
+```razor
+@if (seccion.Clase == "seccion-sapbo")
+{
+    @Html.Partial("_ArbolCarpetas", arbolBO)
+}
+else
+{
+    foreach (var grupo in seccion.Grupos) { /* rendering plano */ }
+}
+```
+
+La variable `arbolBO` se construye al inicio del bloque:
+```razor
+var arbolBO = CarpetaNodo.ConstruirArbol(reportesBO);
+```
+
+La seccion Server Report mantiene el agrupamiento plano original, ya que sus
+categorias no tienen la misma estructura jerarquica profunda.
 
 ### 4.6 Rendimiento y optimizaciones
 
@@ -547,7 +691,10 @@ presentan agrupados por su ruta completa en el CMS:
 | `Services/SapBoClient.cs` | 260-310 | `ConsultarWebI`: resolucion de carpeta con cache compartido |
 | `Services/SapBoClient.cs` | 955-997 | `ResolverRutaCarpeta`: cadena ascendente via `parentId` |
 | `Controllers/HomeController.cs` | 317-342 | `CargarReportesWebI`: mapeo `Carpeta` → `Categoria` |
-| `Views/Home/Index.cshtml` | — | Agrupacion visual por `Categoria` en `<details>` |
+| `Models/ReporteViewModel.cs` | — | Clase `CarpetaNodo` con `ConstruirArbol()` y `ContarReportes()` |
+| `Views/Home/Index.cshtml` | 107, 127-132 | Construccion del arbol y condicional SAP BO vs rendering plano |
+| `Views/Home/_ArbolCarpetas.cshtml` | 1-113 | Partial view recursivo para renderizar arbol de carpetas |
+| `Content/Site.css` | 136-137 | Estilos de indentacion y bordes para subcarpetas anidadas |
 
 ### 4.8 Referencia rapida de endpoints utilizados
 
