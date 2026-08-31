@@ -1,0 +1,112 @@
+@using PortalReportesCrystal.Models
+@model CarpetaNodo
+
+@foreach (var entry in Model.Hijos.OrderBy(h => h.Key))
+{
+    var hijo = entry.Value;
+    int total = hijo.ContarReportes();
+    <details class="grupo-reportes" data-grupo="@hijo.RutaCompleta">
+        <summary class="grupo-titulo">
+            <span class="grupo-icono">&#128193;</span>
+            <span class="grupo-nombre">@hijo.Nombre</span>
+            <span class="grupo-conteo" data-visibles="@total">@total reportes</span>
+            <span class="grupo-flecha">&#9662;</span>
+        </summary>
+
+        @if (hijo.Reportes.Any())
+        {
+            <table class="tabla-reportes">
+                <thead>
+                    <tr>
+                        <th>Reporte</th>
+                        <th>Origen</th>
+                        <th>Params</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var reporte in hijo.Reportes.OrderBy(r => r.Nombre))
+                    {
+                        string dataTipo = reporte.Tipo == TipoReporte.WebI ? "sapbo"
+                                          : reporte.Tipo == TipoReporte.Externo ? "externo"
+                                          : "serverreport";
+                        string dataParam = reporte.TieneParametros == true ? "con"
+                                          : reporte.TieneParametros == false ? "sin"
+                                          : "desconocido";
+                        string dataEstado = string.IsNullOrEmpty(reporte.UltimoError) ? "ok" : "problemas";
+                        string busq = (reporte.Nombre + " " + reporte.Categoria + " " + (reporte.Servidor ?? "") + " " + (reporte.Descripcion ?? "")).ToLower();
+                        <tr data-tipo="@dataTipo" data-param="@dataParam" data-estado="@dataEstado" data-busq="@busq" class="@(dataEstado == "problemas" ? "fila-con-problemas" : "")">
+                            <td>
+                                <strong>@reporte.Nombre</strong>
+                                @if (!string.IsNullOrEmpty(reporte.UltimoError))
+                                {
+                                    <span class="badge badge-alerta" title="Ultimo intento: @reporte.UltimoError">&#9888; Con problemas</span>
+                                }
+                                @if (!string.IsNullOrEmpty(reporte.Descripcion))
+                                {
+                                    <br />
+                                    <span class="nota-inline">@reporte.Descripcion</span>
+                                }
+                            </td>
+                            <td>
+                                @if (reporte.Tipo == TipoReporte.WebI && reporte.Servidor == "SAP BO .rpt")
+                                {
+                                    <span class="badge badge-sapbo">SAP BO .rpt</span>
+                                }
+                                else if (reporte.Tipo == TipoReporte.WebI)
+                                {
+                                    <span class="badge badge-webi">SAP BO WebI</span>
+                                }
+                                else if (reporte.Tipo == TipoReporte.Local)
+                                {
+                                    <span class="badge badge-local">@reporte.Servidor</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-externo">@(string.IsNullOrEmpty(reporte.Servidor) ? "Externo" : reporte.Servidor)</span>
+                                }
+                            </td>
+                            <td>
+                                @if (reporte.TieneParametros == true)
+                                {
+                                    <span class="badge badge-param" title="Solicita valores al usuario antes de ejecutar">Si</span>
+                                }
+                                else if (reporte.TieneParametros == false)
+                                {
+                                    <span class="badge badge-noparam">No</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-desconocido" title="Aun no analizado - se muestra al terminar el escaneo">?</span>
+                                }
+                            </td>
+                            <td>
+                                @if (reporte.Tipo == TipoReporte.Local)
+                                {
+                                    <a href="@Url.Action("Ver", "Reportes", new { raizId = reporte.RaizId, path = reporte.PathRelativo })" class="btn">Ver</a>
+                                    <a href="@Url.Action("Exportar", "Reportes", new { raizId = reporte.RaizId, path = reporte.PathRelativo, formato = "pdf" })" class="btn btn-sec">PDF</a>
+                                    <a href="@Url.Action("Exportar", "Reportes", new { raizId = reporte.RaizId, path = reporte.PathRelativo, formato = "excel" })" class="btn btn-sec">Excel</a>
+                                    <a href="@Url.Action("Exportar", "Reportes", new { raizId = reporte.RaizId, path = reporte.PathRelativo, formato = "exceldata" })" class="btn btn-sec" title="Datos sin formato, listos para analisis en Excel">Excel datos</a>
+                                }
+                                else if (reporte.Tipo == TipoReporte.WebI)
+                                {
+                                    string tipoDoc = reporte.Servidor == "SAP BO .rpt" ? "CrystalReport" : "Webi";
+                                    <a href="@Url.Action("Ver", "Sapbo", new { nombre = reporte.Nombre, categoria = reporte.Categoria, tipoDoc = tipoDoc, url = reporte.UrlExterna })" class="btn btn-webi">Abrir en portal &rarr;</a>
+                                }
+                                else
+                                {
+                                    <a href="@reporte.UrlExterna" target="_blank" rel="noopener" class="btn">Abrir en @reporte.Servidor &rarr;</a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        @if (hijo.Hijos.Any())
+        {
+            @Html.Partial("_ArbolCarpetas", hijo)
+        }
+    </details>
+}

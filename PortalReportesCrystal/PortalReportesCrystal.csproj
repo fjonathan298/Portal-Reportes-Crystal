@@ -111,6 +111,7 @@
     <Content Include="Views\Shared\_Layout.cshtml" />
     <Content Include="Views\Home\Estadisticas.cshtml" />
     <Content Include="Views\Home\Index.cshtml" />
+    <Content Include="Views\Home\_ArbolCarpetas.cshtml" />
     <Content Include="Views\Reportes\Ver.cshtml" />
     <Content Include="Views\Reportes\ErrorReporte.cshtml" />
     <Content Include="Views\Sapbo\Ver.cshtml" />

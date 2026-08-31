@@ -33,6 +33,16 @@ namespace PortalReportesCrystal.Services
 
         private static string _logPath;
 
+        private static readonly ConcurrentDictionary<string, string> _cacheRutas =
+            new ConcurrentDictionary<string, string>();
+
+        private static readonly HashSet<string> _carpetasRaiz = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Carpeta raíz", "Carpeta raiz", "Root Folder",
+            "Carpetas de usuario", "User Folders",
+            "Public Folders", "Carpetas publicas", "Carpetas públicas"
+        };
+
         private static readonly HashSet<string> _carpetasExcluidas = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "Almacenamiento temporal", "Complementos de escritorio",
@@ -256,7 +266,6 @@ namespace PortalReportesCrystal.Services
 
             string respBody = HacerGetAutenticado(url, token);
 
-            var carpetas = new ConcurrentDictionary<string, string>();
             var resultados = new List<ReporteWebI>();
 
             var js = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
@@ -280,7 +289,7 @@ namespace PortalReportesCrystal.Services
                 string carpeta = "WebI";
                 if (!string.IsNullOrEmpty(folderId))
                 {
-                    carpeta = carpetas.GetOrAdd(folderId, id => ResolverNombreCarpeta(id, token));
+                    carpeta = _cacheRutas.GetOrAdd(folderId, id => ResolverRutaCarpeta(id, token));
                 }
 
                 string urlDoc = "";
@@ -332,7 +341,7 @@ namespace PortalReportesCrystal.Services
                     if (string.IsNullOrEmpty(folderId)) continue;
                     if (!carpetasRaizPermitidas.Contains(folderName ?? "")) continue;
 
-                    BuscarCrystalEnCarpeta(folderId, folderName ?? "Raiz", token, resultados, js, 0);
+                    BuscarCrystalEnCarpeta(folderId, "", token, resultados, js, 0);
                 }
 
                 RegistrarInfo("Crystal Reports totales encontrados en servidor: " + resultados.Count);
@@ -345,10 +354,10 @@ namespace PortalReportesCrystal.Services
             return resultados;
         }
 
-        private static void BuscarCrystalEnCarpeta(string folderId, string folderName, string token,
+        private static void BuscarCrystalEnCarpeta(string folderId, string pathPadre, string token,
             List<ReporteWebI> resultados, JavaScriptSerializer js, int depth)
         {
-            if (depth > 7) return;
+            if (depth > 10) return;
 
             try
             {
@@ -368,7 +377,13 @@ namespace PortalReportesCrystal.Services
                     if (tipo == "Folder" || tipo == "User" || tipo == "PersonalCategory" || tipo == "FavoritesFolder")
                     {
                         if (!_carpetasExcluidas.Contains(nombre ?? ""))
-                            BuscarCrystalEnCarpeta(entryId, nombre ?? folderName, token, resultados, js, depth + 1);
+                        {
+                            string subPath = string.IsNullOrEmpty(pathPadre)
+                                ? (nombre ?? "")
+                                : pathPadre + " / " + (nombre ?? "");
+                            _cacheRutas.TryAdd(entryId, subPath);
+                            BuscarCrystalEnCarpeta(entryId, subPath, token, resultados, js, depth + 1);
+                        }
                         continue;
                     }
 
@@ -385,11 +400,13 @@ namespace PortalReportesCrystal.Services
                             + "&sIDType=CUID&sType=rpt&sOutputFormat=H&sWindow=New&sRefresh=Y";
                     }
 
+                    string carpetaReporte = string.IsNullOrEmpty(pathPadre) ? "SAP BO" : pathPadre;
+
                     resultados.Add(new ReporteWebI
                     {
                         Nombre = nombre ?? "(sin nombre)",
                         CUID = cuid ?? "",
-                        Carpeta = folderName,
+                        Carpeta = carpetaReporte,
                         Descripcion = "",
                         UrlOpenDocument = urlDoc,
                         TipoDocumento = "CrystalReport"
@@ -935,23 +952,48 @@ namespace PortalReportesCrystal.Services
             }
         }
 
-        private static string ResolverNombreCarpeta(string folderId, string token)
+        private static string ResolverRutaCarpeta(string folderId, string token)
         {
+            var partes = new List<string>();
+            string currentId = folderId;
+            int maxNiveles = 12;
+
             try
             {
-                string url = ApiUrl + "/infostore/" + Uri.EscapeDataString(folderId);
-                string body = HacerGetAutenticado(url, token);
-                var js = new JavaScriptSerializer();
-                var data = js.Deserialize<Dictionary<string, object>>(body);
-                string name = ObtenerValorStr(data, "name");
-                if (!string.IsNullOrEmpty(name))
-                    return name;
+                while (!string.IsNullOrEmpty(currentId) && maxNiveles-- > 0)
+                {
+                    string cached;
+                    if (_cacheRutas.TryGetValue(currentId, out cached))
+                    {
+                        partes.Insert(0, cached);
+                        break;
+                    }
+
+                    string url = ApiUrl + "/infostore/" + Uri.EscapeDataString(currentId);
+                    string body = HacerGetAutenticado(url, token);
+                    var js = new JavaScriptSerializer();
+                    var data = js.Deserialize<Dictionary<string, object>>(body);
+                    string name = ObtenerValorStr(data, "name");
+                    string parentId = ObtenerValorStr(data, "parentId");
+
+                    if (string.IsNullOrEmpty(name) || _carpetasRaiz.Contains(name) || _carpetasExcluidas.Contains(name))
+                        break;
+
+                    partes.Insert(0, name);
+                    currentId = parentId;
+                }
             }
             catch (Exception ex)
             {
-                RegistrarError("ResolverNombreCarpeta(" + folderId + ")", ex);
+                RegistrarError("ResolverRutaCarpeta(" + folderId + ")", ex);
             }
-            return "WebI - Carpeta " + folderId;
+
+            if (partes.Count == 0)
+                return "WebI";
+
+            string rutaCompleta = string.Join(" / ", partes);
+            _cacheRutas.TryAdd(folderId, rutaCompleta);
+            return rutaCompleta;
         }
 
         private static System.Collections.ArrayList ExtraerDocuments(Dictionary<string, object> root)

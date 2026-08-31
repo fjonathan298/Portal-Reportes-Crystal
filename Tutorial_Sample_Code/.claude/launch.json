@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "PortalReportesCrystal",
+      "runtimeExecutable": "C:\\Program Files\\IIS Express\\iisexpress.exe",
+      "runtimeArgs": ["/config:C:\\CLAUDE CODE\\Proyecto Portal Crystal\\PortalReportesCrystal\\applicationhost.iisexpress.config", "/site:PortalReportesCrystal"],
+      "port": 58172
+    }
+  ]
+}
